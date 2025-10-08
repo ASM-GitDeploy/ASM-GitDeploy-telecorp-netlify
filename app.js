@@ -247,23 +247,32 @@ class TeleCorpApp {
             })
                 
             document.getElementById('init-database')?.addEventListener('click', async () => {
-              try {
-                app.showLoading(true);
-                const response = await fetch(`${app.config.apiBaseUrl}/init-database`, {
-                  method: 'POST'
-                });
-                const result = await response.json();
-                if (result.success) {
-                  app.showToast('Banco inicializado com sucesso!', 'success');
-                } else {
-                  throw new Error(result.message || 'Falha na inicialização');
-                }
-              } catch (error) {
-                app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
-              } finally {
-                app.showLoading(false);
-              }
-            });
+          app.showLoading(true);
+          try {
+            const response = await fetch(`${app.config.apiBaseUrl}/init-database`, { method: 'POST' });
+            const result = await response.json();
+            if (result.success === true) {
+              app.showToast('Banco inicializado com sucesso!', 'success');
+            } else {
+              // Exibe o erro retornado pelo servidor, convertendo em string
+              app.showToast('Erro na inicialização: ' + JSON.stringify(result), 'error');
+            }
+          } catch (error) {
+            app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
+          } finally {
+            // Garantir que o overlay sempre desapareça
+            app.showLoading(false);
+  }
+})
+        showLoading(show) {
+  const overlay = document.getElementById('loading-overlay');
+  if (!overlay) return;
+  if (show) {
+    overlay.classList.add('show');
+  } else {
+    overlay.classList.remove('show');
+  }
+};
         }
 
         // Navigation
