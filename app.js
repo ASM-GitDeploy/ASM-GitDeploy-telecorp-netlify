@@ -3,6 +3,12 @@
 class TeleCorpApp {
     constructor() {
         this.currentPage = 'dashboard';
+        this.isOnline = false;
+        this.operationMode = 'online';
+        this.autoRefreshInterval = null;
+        this.showNotifications = true;
+        
+        // Fallback data structure
         this.data = {
             credenciais: {
                 databaseUrl: "postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require",
@@ -18,7 +24,7 @@ class TeleCorpApp {
                     cor: "#3B82F6"
                 },
                 {
-                    nome: "145112",
+                    nome: "145112", 
                     totalLinhas: 28,
                     linhasAtivas: 25,
                     linhasInativas: 3,
@@ -103,9 +109,36 @@ class TeleCorpApp {
                     centrocusto: "CC004-Logística",
                     entidade: "145122",
                     status: "inativa"
+                },
+                {
+                    id: 5,
+                    titular: "Carlos Eduardo Pereira",
+                    numerocelular: "(85) 98765-4321",
+                    valor: 135.00,
+                    plano: "Corporativo Max",
+                    responsavel: "Fernanda Costa",
+                    contacontabil: "1.2.3.4.030",
+                    codigoresponsavel: "RES030",
+                    centrocusto: "CC001-Administração",
+                    entidade: "145111",
+                    status: "ativa"
+                },
+                {
+                    id: 6,
+                    titular: "Ana Paula Rodrigues",
+                    numerocelular: "(47) 99123-4567",
+                    valor: 85.75,
+                    plano: "Digital Basic",
+                    responsavel: "Roberto Silva",
+                    contacontabil: "1.2.3.4.040",
+                    codigoresponsavel: "RES040",
+                    centrocusto: "CC002-Vendas",
+                    entidade: "145112",
+                    status: "ativa"
                 }
             ]
         };
+
         this.filteredLines = [...this.data.linhas];
         this.editingLine = null;
         this.charts = {};
@@ -113,46 +146,163 @@ class TeleCorpApp {
         this.init();
     }
 
-    init() {
+    async init() {
         this.bindEvents();
         this.populateDropdowns();
+        await this.checkConnection();
         this.showPage('dashboard');
         this.updateDashboard();
         this.renderLineTable();
+        this.setupAutoRefresh();
+        this.updateSystemInfo();
     }
 
     bindEvents() {
+        // Mobile menu toggle
+        const mobileToggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        if (mobileToggle && sidebar) {
+            mobileToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768 && 
+                    !sidebar.contains(e.target) && 
+                    !mobileToggle.contains(e.target) &&
+                    sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        }
+
         // Navigation
         document.querySelectorAll('.menu-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const page = e.target.closest('.menu-link').dataset.page;
                 this.showPage(page);
+                
+                // Close mobile menu after navigation
+                if (window.innerWidth <= 768) {
+                    sidebar?.classList.remove('open');
+                }
             });
         });
 
         // Line management
-        document.getElementById('add-line-btn').addEventListener('click', () => this.openLineModal());
-        document.getElementById('close-modal').addEventListener('click', () => this.closeLineModal());
-        document.getElementById('cancel-btn').addEventListener('click', () => this.closeLineModal());
-        document.getElementById('line-form').addEventListener('submit', (e) => this.handleLineForm(e));
+        document.getElementById('add-line-btn')?.addEventListener('click', () => this.openLineModal());
+        document.getElementById('refresh-lines-btn')?.addEventListener('click', () => this.refreshData());
+        document.getElementById('close-modal')?.addEventListener('click', () => this.closeLineModal());
+        document.getElementById('cancel-btn')?.addEventListener('click', () => this.closeLineModal());
+        document.getElementById('line-form')?.addEventListener('submit', (e) => this.handleLineForm(e));
 
         // Filters
-        document.getElementById('search-input').addEventListener('input', () => this.applyFilters());
-        document.getElementById('entity-filter').addEventListener('change', () => this.applyFilters());
-        document.getElementById('plan-filter').addEventListener('change', () => this.applyFilters());
-        document.getElementById('status-filter').addEventListener('change', () => this.applyFilters());
+        document.getElementById('search-input')?.addEventListener('input', () => this.applyFilters());
+        document.getElementById('entity-filter')?.addEventListener('change', () => this.applyFilters());
+        document.getElementById('plan-filter')?.addEventListener('change', () => this.applyFilters());
+        document.getElementById('status-filter')?.addEventListener('change', () => this.applyFilters());
 
         // Reports
-        document.getElementById('export-pdf-btn').addEventListener('click', () => this.exportPDF());
-        document.getElementById('export-excel-btn').addEventListener('click', () => this.exportExcel());
+        document.getElementById('export-pdf-btn')?.addEventListener('click', () => this.exportPDF());
+        document.getElementById('export-excel-btn')?.addEventListener('click', () => this.exportExcel());
+        
+        // Report filters
+        document.getElementById('report-entity-filter')?.addEventListener('change', () => this.updateReportPreview());
+        document.getElementById('report-status-filter')?.addEventListener('change', () => this.updateReportPreview());
+        document.getElementById('report-min-value')?.addEventListener('input', () => this.updateReportPreview());
+        document.getElementById('report-max-value')?.addEventListener('input', () => this.updateReportPreview());
 
         // Settings
-        document.getElementById('test-connection-btn').addEventListener('click', () => this.testConnection());
-        document.getElementById('db-config-form').addEventListener('submit', (e) => this.saveConfig(e));
+        document.getElementById('test-connection-btn')?.addEventListener('click', () => this.testConnection());
+        document.getElementById('db-config-form')?.addEventListener('submit', (e) => this.saveConfig(e));
+        document.getElementById('reset-config-btn')?.addEventListener('click', () => this.resetConfig());
+        document.getElementById('operation-mode')?.addEventListener('change', (e) => {
+            this.operationMode = e.target.value;
+            this.updateConnectionStatus();
+        });
+        document.getElementById('auto-refresh')?.addEventListener('change', (e) => {
+            this.setupAutoRefresh(parseInt(e.target.value));
+        });
+        document.getElementById('show-notifications')?.addEventListener('change', (e) => {
+            this.showNotifications = e.target.checked;
+        });
 
         // Modal backdrop click
-        document.querySelector('.modal-backdrop').addEventListener('click', () => this.closeLineModal());
+        document.querySelector('.modal-backdrop')?.addEventListener('click', () => this.closeLineModal());
+    }
+
+    async checkConnection() {
+        try {
+            this.updateConnectionStatus('checking');
+            
+            if (this.operationMode === 'offline') {
+                this.isOnline = false;
+                this.updateConnectionStatus('offline');
+                return;
+            }
+
+            const response = await fetch(this.data.credenciais.apiBaseUrl + '/test');
+            this.isOnline = response.ok;
+            
+            if (this.isOnline) {
+                this.updateConnectionStatus('connected');
+                // Try to load data from API
+                await this.loadDataFromAPI();
+            } else {
+                this.updateConnectionStatus('disconnected');
+            }
+        } catch (error) {
+            console.warn('API not available, using fallback data:', error);
+            this.isOnline = false;
+            this.updateConnectionStatus('disconnected');
+        }
+    }
+
+    updateConnectionStatus(status = null) {
+        const indicator = document.getElementById('status-indicator');
+        const text = document.getElementById('status-text');
+        const apiStatus = document.getElementById('api-status');
+        
+        if (!indicator || !text) return;
+
+        if (status === null) {
+            status = this.operationMode === 'offline' ? 'offline' : 
+                     this.isOnline ? 'connected' : 'disconnected';
+        }
+
+        indicator.className = 'status-indicator ' + status;
+        
+        const statusTexts = {
+            checking: 'Verificando...',
+            connected: 'Conectado',
+            disconnected: 'Desconectado',
+            offline: 'Modo Offline'
+        };
+        
+        text.textContent = statusTexts[status] || 'Desconhecido';
+        
+        if (apiStatus) {
+            apiStatus.textContent = statusTexts[status] || 'Desconhecido';
+        }
+    }
+
+    async loadDataFromAPI() {
+        try {
+            // Try to load lines from API
+            const response = await fetch(this.data.credenciais.apiBaseUrl + '/linhas');
+            if (response.ok) {
+                const apiData = await response.json();
+                if (apiData.linhas && Array.isArray(apiData.linhas)) {
+                    this.data.linhas = apiData.linhas;
+                    this.filteredLines = [...this.data.linhas];
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to load data from API, using fallback data');
+        }
     }
 
     showPage(pageId) {
@@ -173,19 +323,22 @@ class TeleCorpApp {
             this.updateDashboard();
         } else if (pageId === 'management') {
             this.renderLineTable();
+        } else if (pageId === 'reports') {
+            this.updateReportPreview();
+        } else if (pageId === 'settings') {
+            this.loadSettings();
         }
     }
 
     populateDropdowns() {
         // Entity dropdowns
         const entitySelects = [
-            document.getElementById('entity-filter'),
-            document.getElementById('report-entity-filter'),
-            document.getElementById('entidade')
+            'entity-filter', 'report-entity-filter', 'entidade'
         ];
 
-        entitySelects.forEach(select => {
-            if (select) {
+        entitySelects.forEach(selectId => {
+            const select = document.getElementById(selectId);
+            if (select && select.children.length <= 1) { // Only populate if empty
                 this.data.entidades.forEach(entidade => {
                     const option = document.createElement('option');
                     option.value = entidade.nome;
@@ -196,13 +349,11 @@ class TeleCorpApp {
         });
 
         // Plan dropdowns
-        const planSelects = [
-            document.getElementById('plan-filter'),
-            document.getElementById('plano')
-        ];
+        const planSelects = ['plan-filter', 'plano'];
 
-        planSelects.forEach(select => {
-            if (select) {
+        planSelects.forEach(selectId => {
+            const select = document.getElementById(selectId);
+            if (select && select.children.length <= 1) {
                 this.data.planos.forEach(plano => {
                     const option = document.createElement('option');
                     option.value = plano;
@@ -214,7 +365,7 @@ class TeleCorpApp {
 
         // Centro de custo dropdown
         const centroCustoSelect = document.getElementById('centrocusto');
-        if (centroCustoSelect) {
+        if (centroCustoSelect && centroCustoSelect.children.length <= 1) {
             this.data.centrosCusto.forEach(centro => {
                 const option = document.createElement('option');
                 option.value = centro;
@@ -225,7 +376,10 @@ class TeleCorpApp {
     }
 
     updateDashboard() {
-        // Calculate statistics
+        // Recalculate entity statistics based on current lines
+        this.recalculateEntityStatistics();
+        
+        // Calculate overall statistics
         const stats = this.calculateStatistics();
         
         // Update stat cards
@@ -243,6 +397,16 @@ class TeleCorpApp {
         }, 100);
     }
 
+    recalculateEntityStatistics() {
+        this.data.entidades.forEach(entidade => {
+            const linhasEntidade = this.data.linhas.filter(linha => linha.entidade === entidade.nome);
+            entidade.totalLinhas = linhasEntidade.length;
+            entidade.linhasAtivas = linhasEntidade.filter(linha => linha.status === 'ativa').length;
+            entidade.linhasInativas = entidade.totalLinhas - entidade.linhasAtivas;
+            entidade.custoMensal = linhasEntidade.reduce((total, linha) => total + linha.valor, 0);
+        });
+    }
+
     calculateStatistics() {
         const totalLinhas = this.data.linhas.length;
         const linhasAtivas = this.data.linhas.filter(linha => linha.status === 'ativa').length;
@@ -258,6 +422,8 @@ class TeleCorpApp {
 
     renderEntityCards() {
         const container = document.getElementById('entity-cards');
+        if (!container) return;
+
         container.innerHTML = '';
 
         this.data.entidades.forEach(entidade => {
@@ -363,7 +529,15 @@ class TeleCorpApp {
 
     renderLineTable() {
         const tbody = document.getElementById('lines-table-body');
+        const filteredCount = document.getElementById('filtered-count');
+        const totalCount = document.getElementById('total-count');
+        
+        if (!tbody) return;
+
         tbody.innerHTML = '';
+
+        if (filteredCount) filteredCount.textContent = this.filteredLines.length;
+        if (totalCount) totalCount.textContent = this.data.linhas.length;
 
         this.filteredLines.forEach(linha => {
             const row = document.createElement('tr');
@@ -372,6 +546,7 @@ class TeleCorpApp {
                 <td>${linha.numerocelular}</td>
                 <td>${linha.plano}</td>
                 <td>${this.formatCurrency(linha.valor)}</td>
+                <td>${linha.centrocusto}</td>
                 <td>${linha.entidade}</td>
                 <td>
                     <span class="status-badge status-badge--${linha.status === 'ativa' ? 'active' : 'inactive'}">
@@ -394,16 +569,17 @@ class TeleCorpApp {
     }
 
     applyFilters() {
-        const searchTerm = document.getElementById('search-input').value.toLowerCase();
-        const entityFilter = document.getElementById('entity-filter').value;
-        const planFilter = document.getElementById('plan-filter').value;
-        const statusFilter = document.getElementById('status-filter').value;
+        const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
+        const entityFilter = document.getElementById('entity-filter')?.value || '';
+        const planFilter = document.getElementById('plan-filter')?.value || '';
+        const statusFilter = document.getElementById('status-filter')?.value || '';
 
         this.filteredLines = this.data.linhas.filter(linha => {
             const matchesSearch = !searchTerm || 
                 linha.titular.toLowerCase().includes(searchTerm) ||
                 linha.numerocelular.toLowerCase().includes(searchTerm) ||
-                linha.plano.toLowerCase().includes(searchTerm);
+                linha.plano.toLowerCase().includes(searchTerm) ||
+                linha.responsavel.toLowerCase().includes(searchTerm);
             
             const matchesEntity = !entityFilter || linha.entidade === entityFilter;
             const matchesPlan = !planFilter || linha.plano === planFilter;
@@ -420,8 +596,12 @@ class TeleCorpApp {
         const modal = document.getElementById('line-modal');
         const form = document.getElementById('line-form');
         const title = document.getElementById('modal-title');
+        const saveBtn = document.getElementById('save-btn-text');
+
+        if (!modal || !form || !title) return;
 
         title.textContent = line ? 'Editar Linha' : 'Adicionar Linha';
+        if (saveBtn) saveBtn.textContent = line ? 'Atualizar' : 'Salvar';
 
         if (line) {
             // Populate form with existing data
@@ -439,43 +619,108 @@ class TeleCorpApp {
     }
 
     closeLineModal() {
-        document.getElementById('line-modal').classList.add('hidden');
+        const modal = document.getElementById('line-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
         this.editingLine = null;
     }
 
-    handleLineForm(e) {
+    async handleLineForm(e) {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const lineData = {};
-
-        // Get all form fields
-        const fields = ['titular', 'numerocelular', 'valor', 'plano', 'responsavel', 
-                       'codigoresponsavel', 'contacontabil', 'centrocusto', 'entidade', 'status'];
+        const saveBtn = document.getElementById('save-btn');
+        const originalText = saveBtn?.textContent || 'Salvar';
         
-        fields.forEach(field => {
-            const input = document.getElementById(field);
-            if (input) {
-                lineData[field] = input.value;
-            }
-        });
-
-        if (this.editingLine) {
-            // Update existing line
-            lineData.id = this.editingLine.id;
-            const index = this.data.linhas.findIndex(l => l.id === this.editingLine.id);
-            this.data.linhas[index] = { ...this.data.linhas[index], ...lineData };
-            this.showToast('Linha atualizada com sucesso!', 'success');
-        } else {
-            // Add new line
-            lineData.id = Math.max(...this.data.linhas.map(l => l.id), 0) + 1;
-            lineData.valor = parseFloat(lineData.valor);
-            this.data.linhas.push(lineData);
-            this.showToast('Linha adicionada com sucesso!', 'success');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Salvando...';
         }
 
-        this.closeLineModal();
-        this.applyFilters();
-        this.updateDashboard();
+        try {
+            const formData = new FormData(e.target);
+            const lineData = {};
+
+            // Get all form fields
+            const fields = ['titular', 'numerocelular', 'valor', 'plano', 'responsavel', 
+                           'codigoresponsavel', 'contacontabil', 'centrocusto', 'entidade', 'status'];
+            
+            fields.forEach(field => {
+                const input = document.getElementById(field);
+                if (input) {
+                    lineData[field] = input.value;
+                }
+            });
+
+            // Convert valor to number
+            lineData.valor = parseFloat(lineData.valor);
+
+            if (this.editingLine) {
+                // Update existing line
+                lineData.id = this.editingLine.id;
+                const index = this.data.linhas.findIndex(l => l.id === this.editingLine.id);
+                if (index !== -1) {
+                    this.data.linhas[index] = { ...this.data.linhas[index], ...lineData };
+                }
+                
+                // Try to update via API if online
+                if (this.isOnline && this.operationMode === 'online') {
+                    await this.updateLineAPI(lineData);
+                }
+                
+                this.showToast('Linha atualizada com sucesso!', 'success');
+            } else {
+                // Add new line
+                lineData.id = Math.max(...this.data.linhas.map(l => l.id), 0) + 1;
+                this.data.linhas.push(lineData);
+                
+                // Try to add via API if online
+                if (this.isOnline && this.operationMode === 'online') {
+                    await this.addLineAPI(lineData);
+                }
+                
+                this.showToast('Linha adicionada com sucesso!', 'success');
+            }
+
+            this.closeLineModal();
+            this.applyFilters();
+            this.updateDashboard();
+        } catch (error) {
+            console.error('Error saving line:', error);
+            this.showToast('Erro ao salvar linha', 'error');
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
+            }
+        }
+    }
+
+    async addLineAPI(lineData) {
+        try {
+            const response = await fetch(this.data.credenciais.apiBaseUrl + '/linhas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(lineData)
+            });
+            return response.ok;
+        } catch (error) {
+            console.warn('Failed to add line via API:', error);
+            return false;
+        }
+    }
+
+    async updateLineAPI(lineData) {
+        try {
+            const response = await fetch(this.data.credenciais.apiBaseUrl + '/linhas/' + lineData.id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(lineData)
+            });
+            return response.ok;
+        } catch (error) {
+            console.warn('Failed to update line via API:', error);
+            return false;
+        }
     }
 
     editLine(id) {
@@ -485,17 +730,98 @@ class TeleCorpApp {
         }
     }
 
-    deleteLine(id) {
-        if (confirm('Tem certeza que deseja excluir esta linha?')) {
-            this.data.linhas = this.data.linhas.filter(l => l.id !== id);
+    async deleteLine(id) {
+        if (!confirm('Tem certeza que deseja excluir esta linha?')) return;
+
+        try {
+            const lineIndex = this.data.linhas.findIndex(l => l.id === id);
+            if (lineIndex === -1) return;
+
+            // Try to delete via API if online
+            if (this.isOnline && this.operationMode === 'online') {
+                await this.deleteLineAPI(id);
+            }
+
+            this.data.linhas.splice(lineIndex, 1);
             this.applyFilters();
             this.updateDashboard();
             this.showToast('Linha excluída com sucesso!', 'success');
+        } catch (error) {
+            console.error('Error deleting line:', error);
+            this.showToast('Erro ao excluir linha', 'error');
         }
     }
 
+    async deleteLineAPI(id) {
+        try {
+            const response = await fetch(this.data.credenciais.apiBaseUrl + '/linhas/' + id, {
+                method: 'DELETE'
+            });
+            return response.ok;
+        } catch (error) {
+            console.warn('Failed to delete line via API:', error);
+            return false;
+        }
+    }
+
+    async refreshData() {
+        this.showLoading('Atualizando dados...');
+        
+        try {
+            await this.checkConnection();
+            this.applyFilters();
+            this.updateDashboard();
+            this.showToast('Dados atualizados com sucesso!', 'success');
+        } catch (error) {
+            console.error('Error refreshing data:', error);
+            this.showToast('Erro ao atualizar dados', 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    updateReportPreview() {
+        const preview = document.getElementById('report-preview');
+        if (!preview) return;
+
+        const entityFilter = document.getElementById('report-entity-filter')?.value || '';
+        const statusFilter = document.getElementById('report-status-filter')?.value || '';
+        const minValue = parseFloat(document.getElementById('report-min-value')?.value) || 0;
+        const maxValue = parseFloat(document.getElementById('report-max-value')?.value) || Infinity;
+
+        const filteredData = this.data.linhas.filter(linha => {
+            const matchesEntity = !entityFilter || linha.entidade === entityFilter;
+            const matchesStatus = !statusFilter || linha.status === statusFilter;
+            const matchesValue = linha.valor >= minValue && linha.valor <= maxValue;
+            
+            return matchesEntity && matchesStatus && matchesValue;
+        });
+
+        const totalValue = filteredData.reduce((sum, linha) => sum + linha.valor, 0);
+
+        preview.innerHTML = `
+            <div style="text-align: center;">
+                <h4 style="margin-bottom: 16px; color: var(--color-text);">Prévia do Relatório</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                    <div>
+                        <div style="font-size: 24px; font-weight: bold; color: var(--color-primary);">${filteredData.length}</div>
+                        <div style="font-size: 12px; color: var(--color-text-secondary);">LINHAS</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: bold; color: var(--color-success);">${this.formatCurrency(totalValue)}</div>
+                        <div style="font-size: 12px; color: var(--color-text-secondary);">VALOR TOTAL</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: bold; color: var(--color-info);">${filteredData.filter(l => l.status === 'ativa').length}</div>
+                        <div style="font-size: 12px; color: var(--color-text-secondary);">ATIVAS</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     exportPDF() {
-        this.showLoading();
+        this.showLoading('Gerando relatório PDF...');
         
         setTimeout(() => {
             try {
@@ -516,8 +842,11 @@ class TeleCorpApp {
                 doc.text(`Linhas Ativas: ${stats.linhasAtivas}`, 20, 80);
                 doc.text(`Custo Total: ${this.formatCurrency(stats.custoTotal)}`, 20, 90);
 
+                // Get filtered data for report
+                const reportData = this.getReportData();
+                
                 // Table
-                const tableData = this.filteredLines.map(linha => [
+                const tableData = reportData.map(linha => [
                     linha.titular,
                     linha.numerocelular,
                     linha.plano,
@@ -532,7 +861,8 @@ class TeleCorpApp {
                     body: tableData,
                     theme: 'striped',
                     headStyles: { fillColor: [31, 184, 205] },
-                    styles: { fontSize: 8 }
+                    styles: { fontSize: 8 },
+                    margin: { left: 20, right: 20 }
                 });
 
                 doc.save('relatorio-linhas-telefonicas.pdf');
@@ -552,12 +882,13 @@ class TeleCorpApp {
             
             let csv = headers.join(',') + '\n';
             
-            this.filteredLines.forEach(linha => {
+            const reportData = this.getReportData();
+            reportData.forEach(linha => {
                 const row = [
                     `"${linha.titular}"`,
                     `"${linha.numerocelular}"`,
                     `"${linha.plano}"`,
-                    linha.valor,
+                    linha.valor.toString().replace('.', ','),
                     `"${linha.responsavel}"`,
                     `"${linha.codigoresponsavel}"`,
                     `"${linha.contacontabil}"`,
@@ -585,51 +916,148 @@ class TeleCorpApp {
         }
     }
 
-    testConnection() {
-        this.showLoading();
-        
-        setTimeout(() => {
-            // Simulate connection test
-            const success = Math.random() > 0.3; // 70% success rate
+    getReportData() {
+        const entityFilter = document.getElementById('report-entity-filter')?.value || '';
+        const statusFilter = document.getElementById('report-status-filter')?.value || '';
+        const minValue = parseFloat(document.getElementById('report-min-value')?.value) || 0;
+        const maxValue = parseFloat(document.getElementById('report-max-value')?.value) || Infinity;
+
+        return this.data.linhas.filter(linha => {
+            const matchesEntity = !entityFilter || linha.entidade === entityFilter;
+            const matchesStatus = !statusFilter || linha.status === statusFilter;
+            const matchesValue = linha.valor >= minValue && linha.valor <= maxValue;
             
-            if (success) {
+            return matchesEntity && matchesStatus && matchesValue;
+        });
+    }
+
+    async testConnection() {
+        this.showLoading('Testando conexão...');
+        
+        try {
+            const response = await fetch(this.data.credenciais.apiBaseUrl + '/test', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                this.isOnline = true;
+                this.updateConnectionStatus('connected');
                 this.showToast('Conexão testada com sucesso!', 'success');
             } else {
-                this.showToast('Falha na conexão. Verifique as credenciais.', 'error');
+                throw new Error('Connection failed');
             }
-            
+        } catch (error) {
+            this.isOnline = false;
+            this.updateConnectionStatus('disconnected');
+            this.showToast('Falha na conexão. Verifique as credenciais.', 'error');
+        } finally {
             this.hideLoading();
-        }, 2000);
+        }
     }
 
     saveConfig(e) {
         e.preventDefault();
         
-        const databaseUrl = document.getElementById('database-url').value;
-        const apiBaseUrl = document.getElementById('api-base-url').value;
+        const databaseUrl = document.getElementById('database-url')?.value || '';
+        const apiBaseUrl = document.getElementById('api-base-url')?.value || '';
         
         this.data.credenciais = { databaseUrl, apiBaseUrl };
         
         this.showToast('Configurações salvas com sucesso!', 'success');
+        
+        // Re-check connection with new settings
+        this.checkConnection();
     }
 
-    showLoading() {
-        document.getElementById('loading-overlay').classList.remove('hidden');
+    resetConfig() {
+        document.getElementById('database-url').value = "postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require";
+        document.getElementById('api-base-url').value = "/.netlify/functions/api";
+        
+        this.showToast('Configurações restauradas!', 'info');
+    }
+
+    loadSettings() {
+        const operationModeSelect = document.getElementById('operation-mode');
+        const autoRefreshInput = document.getElementById('auto-refresh');
+        const showNotificationsCheck = document.getElementById('show-notifications');
+        
+        if (operationModeSelect) operationModeSelect.value = this.operationMode;
+        if (autoRefreshInput) autoRefreshInput.value = 30;
+        if (showNotificationsCheck) showNotificationsCheck.checked = this.showNotifications;
+    }
+
+    setupAutoRefresh(intervalSeconds = 30) {
+        if (this.autoRefreshInterval) {
+            clearInterval(this.autoRefreshInterval);
+        }
+        
+        if (intervalSeconds > 0 && this.operationMode === 'online') {
+            this.autoRefreshInterval = setInterval(() => {
+                this.checkConnection();
+            }, intervalSeconds * 1000);
+        }
+    }
+
+    updateSystemInfo() {
+        const lastUpdate = document.getElementById('last-update');
+        const totalRecords = document.getElementById('total-records');
+        
+        if (lastUpdate) {
+            lastUpdate.textContent = new Date().toLocaleString('pt-BR');
+        }
+        
+        if (totalRecords) {
+            totalRecords.textContent = this.data.linhas.length.toString();
+        }
+    }
+
+    showLoading(message = 'Carregando...') {
+        const overlay = document.getElementById('loading-overlay');
+        const text = document.getElementById('loading-text');
+        
+        if (overlay) {
+            overlay.classList.remove('hidden');
+        }
+        if (text) {
+            text.textContent = message;
+        }
     }
 
     hideLoading() {
-        document.getElementById('loading-overlay').classList.add('hidden');
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
     }
 
     showToast(message, type = 'info') {
+        if (!this.showNotifications) return;
+        
         const container = document.getElementById('toast-container');
+        if (!container) return;
+        
         const toast = document.createElement('div');
         
         toast.className = `toast toast--${type}`;
+        
+        const icons = {
+            success: '✅',
+            error: '❌', 
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        const titles = {
+            success: 'Sucesso',
+            error: 'Erro',
+            warning: 'Aviso',
+            info: 'Informação'
+        };
+        
         toast.innerHTML = `
             <div style="font-weight: 500; margin-bottom: 4px;">
-                ${type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️'} 
-                ${type === 'success' ? 'Sucesso' : type === 'error' ? 'Erro' : type === 'warning' ? 'Aviso' : 'Informação'}
+                ${icons[type]} ${titles[type]}
             </div>
             <div>${message}</div>
         `;
@@ -643,7 +1071,7 @@ class TeleCorpApp {
                     container.removeChild(toast);
                 }
             }, 250);
-        }, 3000);
+        }, 4000);
     }
 
     formatCurrency(value) {
@@ -658,4 +1086,13 @@ class TeleCorpApp {
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new TeleCorpApp();
+});
+
+// Handle window resize for charts
+window.addEventListener('resize', () => {
+    if (app && app.charts) {
+        Object.values(app.charts).forEach(chart => {
+            if (chart) chart.resize();
+        });
+    }
 });

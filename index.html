@@ -11,8 +11,11 @@
 </head>
 <body>
     <div class="app">
+        <!-- Mobile Menu Toggle -->
+        <button class="mobile-menu-toggle" id="mobile-menu-toggle">☰</button>
+
         <!-- Sidebar -->
-        <nav class="sidebar">
+        <nav class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h2>TeleCorp</h2>
                 <p>Gerenciamento de Linhas</p>
@@ -39,7 +42,12 @@
             <div class="page" id="dashboard-page">
                 <header class="page-header">
                     <h1>Dashboard</h1>
-                    <p>Visão geral das linhas telefônicas</p>
+                    <div class="header-actions">
+                        <div class="connection-status" id="connection-status">
+                            <span class="status-indicator" id="status-indicator"></span>
+                            <span id="status-text">Verificando conexão...</span>
+                        </div>
+                    </div>
                 </header>
 
                 <!-- Summary Cards -->
@@ -47,28 +55,28 @@
                     <div class="stat-card">
                         <div class="stat-icon">📱</div>
                         <div class="stat-content">
-                            <h3 id="total-lines">123</h3>
+                            <h3 id="total-lines">-</h3>
                             <p>Total de Linhas</p>
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">✅</div>
                         <div class="stat-content">
-                            <h3 id="active-lines">113</h3>
+                            <h3 id="active-lines">-</h3>
                             <p>Linhas Ativas</p>
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">💰</div>
                         <div class="stat-content">
-                            <h3 id="total-cost">R$ 11.911,30</h3>
+                            <h3 id="total-cost">-</h3>
                             <p>Custo Total</p>
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">🏢</div>
                         <div class="stat-content">
-                            <h3 id="total-entities">4</h3>
+                            <h3 id="total-entities">-</h3>
                             <p>Entidades</p>
                         </div>
                     </div>
@@ -84,7 +92,7 @@
 
                 <!-- Charts Section -->
                 <section class="section">
-                    <h2>Gráficos</h2>
+                    <h2>Análises Visuais</h2>
                     <div class="charts-grid">
                         <div class="chart-container" style="position: relative; height: 300px;">
                             <h3>Distribuição por Entidade</h3>
@@ -102,9 +110,14 @@
             <div class="page hidden" id="management-page">
                 <header class="page-header">
                     <h1>Gerenciamento de Linhas</h1>
-                    <button class="btn btn--primary" id="add-line-btn">
-                        ➕ Adicionar Linha
-                    </button>
+                    <div class="header-actions">
+                        <button class="btn btn--primary" id="add-line-btn">
+                            ➕ Adicionar Linha
+                        </button>
+                        <button class="btn btn--secondary" id="refresh-lines-btn">
+                            🔄 Atualizar
+                        </button>
+                    </div>
                 </header>
 
                 <!-- Filters -->
@@ -131,6 +144,9 @@
                             </select>
                         </div>
                     </div>
+                    <div class="filters-summary" id="filters-summary">
+                        Mostrando <span id="filtered-count">0</span> de <span id="total-count">0</span> linhas
+                    </div>
                 </div>
 
                 <!-- Table -->
@@ -142,6 +158,7 @@
                                 <th>Número</th>
                                 <th>Plano</th>
                                 <th>Valor</th>
+                                <th>Centro de Custo</th>
                                 <th>Entidade</th>
                                 <th>Status</th>
                                 <th>Ações</th>
@@ -164,19 +181,29 @@
                 <div class="reports-grid">
                     <div class="card">
                         <div class="card__body">
-                            <h3>Relatório PDF</h3>
-                            <p>Relatório completo com gráficos e análises</p>
-                            <button class="btn btn--primary" id="export-pdf-btn">
-                                📄 Exportar PDF
+                            <h3>📄 Relatório PDF Completo</h3>
+                            <p>Relatório detalhado com gráficos, estatísticas e tabela de linhas</p>
+                            <div class="report-features">
+                                <span class="feature-badge">✓ Gráficos inclusos</span>
+                                <span class="feature-badge">✓ Estatísticas detalhadas</span>
+                                <span class="feature-badge">✓ Tabela completa</span>
+                            </div>
+                            <button class="btn btn--primary btn--full-width" id="export-pdf-btn">
+                                📄 Gerar Relatório PDF
                             </button>
                         </div>
                     </div>
                     <div class="card">
                         <div class="card__body">
-                            <h3>Exportação Excel</h3>
-                            <p>Dados simples em formato CSV</p>
-                            <button class="btn btn--secondary" id="export-excel-btn">
-                                📊 Exportar Excel
+                            <h3>📊 Exportação Excel</h3>
+                            <p>Dados estruturados para análise em planilhas</p>
+                            <div class="report-features">
+                                <span class="feature-badge">✓ Dados completos</span>
+                                <span class="feature-badge">✓ Formato CSV</span>
+                                <span class="feature-badge">✓ Filtros aplicados</span>
+                            </div>
+                            <button class="btn btn--secondary btn--full-width" id="export-excel-btn">
+                                📊 Exportar para Excel
                             </button>
                         </div>
                     </div>
@@ -200,6 +227,22 @@
                                 <option value="inativa">Inativa</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Valor Mínimo</label>
+                            <input type="number" class="form-control" id="report-min-value" placeholder="0,00" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Valor Máximo</label>
+                            <input type="number" class="form-control" id="report-max-value" placeholder="1000,00" step="0.01">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Report Preview -->
+                <section class="section">
+                    <h2>Prévia dos Dados</h2>
+                    <div class="report-preview" id="report-preview">
+                        <!-- Preview will be populated here -->
                     </div>
                 </section>
             </div>
@@ -208,32 +251,90 @@
             <div class="page hidden" id="settings-page">
                 <header class="page-header">
                     <h1>Configurações</h1>
-                    <p>Configurações do banco de dados</p>
+                    <p>Configurações do sistema e banco de dados</p>
                 </header>
 
-                <div class="card">
-                    <div class="card__body">
-                        <h3>Conexão NeonTech</h3>
-                        <form id="db-config-form">
+                <div class="settings-grid">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>🔗 Conexão com Banco de Dados</h3>
+                        </div>
+                        <div class="card__body">
+                            <form id="db-config-form">
+                                <div class="form-group">
+                                    <label class="form-label">Database URL (PostgreSQL)</label>
+                                    <input type="text" class="form-control" id="database-url" 
+                                           value="postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">API Base URL</label>
+                                    <input type="text" class="form-control" id="api-base-url" 
+                                           value="/.netlify/functions/api">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn--outline" id="test-connection-btn">
+                                        🔗 Testar Conexão
+                                    </button>
+                                    <button type="submit" class="btn btn--primary">
+                                        💾 Salvar Configurações
+                                    </button>
+                                    <button type="button" class="btn btn--secondary" id="reset-config-btn">
+                                        🔄 Restaurar Padrão
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>🔧 Configurações do Sistema</h3>
+                        </div>
+                        <div class="card__body">
                             <div class="form-group">
-                                <label class="form-label">Database URL</label>
-                                <input type="text" class="form-control" id="database-url" 
-                                       value="postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require">
+                                <label class="form-label">Modo de Operação</label>
+                                <select class="form-control" id="operation-mode">
+                                    <option value="online">Online (com banco de dados)</option>
+                                    <option value="offline">Offline (dados locais)</option>
+                                </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">API Base URL</label>
-                                <input type="text" class="form-control" id="api-base-url" 
-                                       value="/.netlify/functions/api">
+                                <label class="form-label">Auto-refresh (segundos)</label>
+                                <input type="number" class="form-control" id="auto-refresh" value="30" min="10" max="300">
                             </div>
                             <div class="form-group">
-                                <button type="button" class="btn btn--primary" id="test-connection-btn">
-                                    🔗 Testar Conexão
-                                </button>
-                                <button type="submit" class="btn btn--secondary">
-                                    💾 Salvar Configurações
-                                </button>
+                                <label class="form-label">
+                                    <input type="checkbox" id="show-notifications" checked> 
+                                    Mostrar notificações
+                                </label>
                             </div>
-                        </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>📊 Informações do Sistema</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="system-info">
+                                <div class="info-item">
+                                    <span class="info-label">Versão:</span>
+                                    <span class="info-value">1.0.0</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Última atualização:</span>
+                                    <span class="info-value" id="last-update">-</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Status da API:</span>
+                                    <span class="info-value" id="api-status">Verificando...</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Total de registros:</span>
+                                    <span class="info-value" id="total-records">-</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -252,49 +353,49 @@
                 <form id="line-form">
                     <div class="form-grid">
                         <div class="form-group">
-                            <label class="form-label">Titular</label>
+                            <label class="form-label">Titular *</label>
                             <input type="text" class="form-control" id="titular" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Número</label>
-                            <input type="text" class="form-control" id="numerocelular" required>
+                            <label class="form-label">Número do Celular *</label>
+                            <input type="text" class="form-control" id="numerocelular" required placeholder="(11) 99999-9999">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Valor</label>
-                            <input type="number" step="0.01" class="form-control" id="valor" required>
+                            <label class="form-label">Valor Mensal *</label>
+                            <input type="number" step="0.01" class="form-control" id="valor" required placeholder="0,00">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Plano</label>
+                            <label class="form-label">Plano *</label>
                             <select class="form-control" id="plano" required>
                                 <option value="">Selecione um plano</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Responsável</label>
+                            <label class="form-label">Responsável *</label>
                             <input type="text" class="form-control" id="responsavel" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Código Responsável</label>
-                            <input type="text" class="form-control" id="codigoresponsavel" required>
+                            <label class="form-label">Código do Responsável *</label>
+                            <input type="text" class="form-control" id="codigoresponsavel" required placeholder="RES001">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Conta Contábil</label>
-                            <input type="text" class="form-control" id="contacontabil" required>
+                            <label class="form-label">Conta Contábil *</label>
+                            <input type="text" class="form-control" id="contacontabil" required placeholder="1.2.3.4.001">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Centro de Custo</label>
+                            <label class="form-label">Centro de Custo *</label>
                             <select class="form-control" id="centrocusto" required>
                                 <option value="">Selecione um centro de custo</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Entidade</label>
+                            <label class="form-label">Entidade *</label>
                             <select class="form-control" id="entidade" required>
                                 <option value="">Selecione uma entidade</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Status</label>
+                            <label class="form-label">Status *</label>
                             <select class="form-control" id="status" required>
                                 <option value="ativa">Ativa</option>
                                 <option value="inativa">Inativa</option>
@@ -305,7 +406,9 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn--outline" id="cancel-btn">Cancelar</button>
-                <button type="submit" form="line-form" class="btn btn--primary" id="save-btn">Salvar</button>
+                <button type="submit" form="line-form" class="btn btn--primary" id="save-btn">
+                    <span id="save-btn-text">Salvar</span>
+                </button>
             </div>
         </div>
     </div>
@@ -316,7 +419,7 @@
     <!-- Loading Overlay -->
     <div class="loading-overlay hidden" id="loading-overlay">
         <div class="loading-spinner"></div>
-        <p>Carregando...</p>
+        <p id="loading-text">Carregando...</p>
     </div>
 
     <script src="app.js"></script>
