@@ -263,7 +263,7 @@ class TeleCorpApp {
             // Garantir que o overlay sempre desapareça
             app.showLoading(false);
   }
-})
+});
         showLoading(show) {
   const overlay = document.getElementById('loading-overlay');
   if (!overlay) return;
