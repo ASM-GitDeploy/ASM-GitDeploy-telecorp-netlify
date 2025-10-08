@@ -263,7 +263,7 @@ class TeleCorpApp {
             // Garantir que o overlay sempre desapareça
             app.showLoading(false);
           }
-        });
+          });
                 showLoading(show) {
           const overlay = document.getElementById('loading-overlay');
           if (!overlay) return;
@@ -272,8 +272,9 @@ class TeleCorpApp {
           } else {
             overlay.classList.remove('show');
           }
-        };
-        
+                }
+          }
+        };  
 
         // Navigation
         document.querySelectorAll('.menu-link').forEach(link => {
@@ -1401,7 +1402,7 @@ class TeleCorpApp {
             currency: 'BRL'
         }).format(value);
     }
-} }
+} 
 
 // Initialize the application
 let app;
