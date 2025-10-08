@@ -237,31 +237,7 @@ class TeleCorpApp {
             });
 
             };    
-        initBtn.addEventListener('click', async () => {   // async AQUI!
-            app.showLoading(true);
-            try {
-                const response = await fetch(`${app.config.apiBaseUrl}/init-database`, { method: 'POST' });
-                const result = await response.json();
-                if (result.success === true) {
-                app.showToast('Banco inicializado com sucesso!', 'success');
-                } else {
-                app.showToast('Erro na inicialização: ' + JSON.stringify(result), 'error');
-                }
-            } catch (error) {
-                app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
-            } finally {
-                app.showLoading(false);
-            }
-            });
-        showLoading(show); {
-         const overlay = document.getElementById('loading-overlay');
-            if (!overlay) return;
-            if (show) {
-             overlay.classList.add('show');
-            } else {
-              overlay.classList.remove('show');
-            }
-        }          
+                
 
         // Navigation
         document.querySelectorAll('.menu-link').forEach(link => {
@@ -1405,25 +1381,4 @@ window.addEventListener('resize', () => {
         });
     }
 });
-document.addEventListener('DOMContentLoaded', () => {
-  const app = new TeleCorpApp();
-  const initBtn = document.getElementById('init-database');
-  if (initBtn) {
-    initBtn.addEventListener('click', async () => {
-      app.showLoading(true);
-      try {
-        const response = await fetch(`${app.config.apiBaseUrl}/init-database`, { method: 'POST' });
-        const result = await response.json();
-        if (result.success) {
-          app.showToast('Banco inicializado com sucesso!', 'success');
-        } else {
-          app.showToast('Erro na inicialização: ' + JSON.stringify(result), 'error');
-        }
-      } catch (error) {
-        app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
-      } finally {
-        app.showLoading(false);
-      }
-    });
-  }
-});
+
