@@ -95,7 +95,7 @@ exports.handler = async (event, context) => {
                     CREATE TABLE IF NOT EXISTS linhas_telefonicas (
                         id SERIAL PRIMARY KEY,
                         titular VARCHAR(255) NOT NULL,
-                        numero_celular VARCHAR(20) UNIQUE NOT NULL,
+                        numerocelular VARCHAR(20) UNIQUE NOT NULL,
                         valor DECIMAL(8,2) NOT NULL,
                         plano VARCHAR(255) NOT NULL,
                         responsavel VARCHAR(255),
