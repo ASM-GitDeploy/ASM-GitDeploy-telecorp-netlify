@@ -260,7 +260,7 @@ class TeleCorpApp {
                   app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
             } finally {
                 // Garantir que o overlay sempre desapareça
-                app.showLoading(false);
+                this.showLoading(false);
             }
         });
         showLoading(show); {
