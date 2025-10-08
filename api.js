@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 
 // Configuração do banco NeonTech
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require',
+    connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_mTWlP06UJufe@ep-delicate-dream-ad38ii5p-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
     ssl: {
         require: true,
         rejectUnauthorized: false
