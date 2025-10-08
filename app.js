@@ -235,7 +235,8 @@ class TeleCorpApp {
         if (mobileToggle && sidebar) {
             mobileToggle.addEventListener('click', () => {
                 sidebar.classList.toggle('open');
-            });
+            }
+         });
 
             document.addEventListener('click', (e) => {
                 if (window.innerWidth <= 768 && 
@@ -1401,7 +1402,7 @@ class TeleCorpApp {
             currency: 'BRL'
         }).format(value);
     }
-} 
+ 
 
 // Initialize the application
 let app;
