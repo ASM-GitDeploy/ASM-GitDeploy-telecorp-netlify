@@ -95,7 +95,7 @@ exports.handler = async (event, context) => {
                     CREATE TABLE IF NOT EXISTS linhas_telefonicas (
                         id SERIAL PRIMARY KEY,
                         titular VARCHAR(255) NOT NULL,
-                        numero_celular VARCHAR(20) UNIQUE NOT NULL,
+                        numerocelular VARCHAR(20) UNIQUE NOT NULL,
                         valor DECIMAL(8,2) NOT NULL,
                         plano VARCHAR(255) NOT NULL,
                         responsavel VARCHAR(255),
@@ -135,7 +135,7 @@ exports.handler = async (event, context) => {
 
                     await client.query(`
                         INSERT INTO linhas_telefonicas
-                        (titular, numero_celular, valor, plano, responsavel, conta_contabil, codigo_responsavel, centro_custo, entidade)
+                        (titular, numerocelular, valor, plano, responsavel, conta_contabil, codigo_responsavel, centro_custo, entidade)
                         VALUES
                         ('João Carlos Silva Santos', '(11) 99876-5432', 120.50, 'Empresarial Pro', 'Maria Santos', '1.2.3.4.001', 'RES001', 'CC001-Administração', '145111'),
                         ('Alexandre Santos Lopes', '(19) 94532-1098', 78.50, 'Empresarial', 'Bruna Tavares', '1.2.3.4.015', 'RES015', 'CC003-Operação', '145112')
@@ -175,13 +175,13 @@ exports.handler = async (event, context) => {
 
         // Add new line
         if (endpoint === 'linhas' && httpMethod === 'POST') {
-            const { titular, numero_celular, valor, plano, responsavel, conta_contabil, codigo_responsavel, centro_custo, entidade } = parsedBody;
+            const { titular, numerocelular, valor, plano, responsavel, conta_contabil, codigo_responsavel, centro_custo, entidade } = parsedBody;
             const result = await pool.query(`
                 INSERT INTO linhas_telefonicas
-                (titular, numero_celular, valor, plano, responsavel, conta_contabil, codigo_responsavel, centro_custo, entidade)
+                (titular, numerocelular, valor, plano, responsavel, conta_contabil, codigo_responsavel, centro_custo, entidade)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 RETURNING *
-            `, [titular, numero_celular, valor, plano, responsavel, conta_contabil, codigo_responsavel, centro_custo, entidade]);
+            `, [titular, numerocelular, valor, plano, responsavel, conta_contabil, codigo_responsavel, centro_custo, entidade]);
 
             return {
                 statusCode: 200,
