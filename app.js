@@ -244,7 +244,7 @@ class TeleCorpApp {
                     sidebar.classList.contains('open')) {
                     sidebar.classList.remove('open');
                 }
-            })
+            });
                 
             document.getElementById('init-database')?.addEventListener('click', async () => {
           app.showLoading(true);
