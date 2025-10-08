@@ -225,24 +225,6 @@ class TeleCorpApp {
         debugConsole.innerHTML = logHTML || 'Aguardando logs...';
         debugConsole.scrollTop = debugConsole.scrollHeight;
     }
-    async handleInitDatabase() {
-    this.showLoading(true);
-    try {
-        const response = await fetch(`${this.config.apiBaseUrl}/init-database`, {
-        method: 'POST'
-        });
-        const result = await response.json();
-        if (result.success) {
-        this.showToast('Banco inicializado com sucesso!', 'success');
-        } else {
-        this.showToast('Erro na inicialização: ' + JSON.stringify(result), 'error');
-        }
-    } catch (error) {
-        this.showToast('Erro ao inicializar banco: ' + error.message, 'error');
-    } finally {
-        this.showLoading(false);
-    }
-    }
 
     bindEvents() {
         // Mobile menu toggle
@@ -254,14 +236,7 @@ class TeleCorpApp {
                 sidebar.classList.toggle('open');
             });
 
-            initBtn.addEventListener('click', this.handleInitDatabase.bind(this));
-                if (window.innerWidth <= 768 && 
-                    !sidebar.contains(e.target) && 
-                    !mobileToggle.contains(e.target) &&
-                    sidebar.classList.contains('open')) {
-                    sidebar.classList.remove('open');
-                }
-        };    
+            };    
         initBtn.addEventListener('click', async () => {   // async AQUI!
             app.showLoading(true);
             try {
@@ -1429,4 +1404,26 @@ window.addEventListener('resize', () => {
             if (chart) chart.resize();
         });
     }
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const app = new TeleCorpApp();
+  const initBtn = document.getElementById('init-database');
+  if (initBtn) {
+    initBtn.addEventListener('click', async () => {
+      app.showLoading(true);
+      try {
+        const response = await fetch(`${app.config.apiBaseUrl}/init-database`, { method: 'POST' });
+        const result = await response.json();
+        if (result.success) {
+          app.showToast('Banco inicializado com sucesso!', 'success');
+        } else {
+          app.showToast('Erro na inicialização: ' + JSON.stringify(result), 'error');
+        }
+      } catch (error) {
+        app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
+      } finally {
+        app.showLoading(false);
+      }
+    });
+  }
 });
