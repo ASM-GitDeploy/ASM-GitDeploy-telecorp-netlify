@@ -244,6 +244,25 @@ class TeleCorpApp {
                     sidebar.classList.contains('open')) {
                     sidebar.classList.remove('open');
                 }
+            })
+                
+            document.getElementById('init-database')?.addEventListener('click', async () => {
+              try {
+                app.showLoading(true);
+                const response = await fetch(`${app.config.apiBaseUrl}/init-database`, {
+                  method: 'POST'
+                });
+                const result = await response.json();
+                if (result.success) {
+                  app.showToast('Banco inicializado com sucesso!', 'success');
+                } else {
+                  throw new Error(result.message || 'Falha na inicialização');
+                }
+              } catch (error) {
+                app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
+              } finally {
+                app.showLoading(false);
+              }
             });
         }
 
