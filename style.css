@@ -662,6 +662,10 @@ select.form-control {
 .gap-16 {
   gap: var(--space-16);
 }
+#init-database {
+  margin-top: 1rem;
+  display: block;
+}
 
 .m-0 {
   margin: 0;
