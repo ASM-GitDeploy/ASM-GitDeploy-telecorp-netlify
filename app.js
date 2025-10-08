@@ -248,21 +248,21 @@ class TeleCorpApp {
         const initBtn = document.getElementById('init-database');
         if (initBtn) {
           initBtn.addEventListener('click', async () => {
-            this.showLoading(true);
+            app.showLoading(true);              // ← app, não this
             try {
-              const response = await fetch(`${this.config.apiBaseUrl}/init-database`, {
+              const response = await fetch(`${app.config.apiBaseUrl}/init-database`, {
                 method: 'POST'
               });
               const result = await response.json();
               if (result.success === true) {
-                this.showToast('Banco inicializado com sucesso!', 'success');
+                app.showToast('Banco inicializado com sucesso!', 'success');
               } else {
-                this.showToast('Erro na inicialização: ' + JSON.stringify(result), 'error');
+                app.showToast('Erro na inicialização: ' + JSON.stringify(result), 'error');
               }
             } catch (error) {
-              this.showToast('Erro ao inicializar banco: ' + error.message, 'error');
+              app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
             } finally {
-              this.showLoading(false);
+              app.showLoading(false);           // ← app, não this
             }
           });
         }
