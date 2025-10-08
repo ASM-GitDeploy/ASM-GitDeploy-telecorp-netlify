@@ -1401,7 +1401,7 @@ class TeleCorpApp {
             currency: 'BRL'
         }).format(value);
     }
-}
+} }
 
 // Initialize the application
 let app;
