@@ -273,7 +273,6 @@ class TeleCorpApp {
             overlay.classList.remove('show');
           }
                 }
-          }
         };  
 
         // Navigation
