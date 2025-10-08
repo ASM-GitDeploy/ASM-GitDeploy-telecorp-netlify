@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleCorp - Gerenciamento de Linhas Telefônicas</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>TeleCorp</h2>
+                <p>Gerenciamento de Linhas</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="#" data-page="dashboard" class="menu-link active">
+                    <span>📊</span> Dashboard
+                </a></li>
+                <li><a href="#" data-page="management" class="menu-link">
+                    <span>📞</span> Gerenciamento
+                </a></li>
+                <li><a href="#" data-page="reports" class="menu-link">
+                    <span>📋</span> Relatórios
+                </a></li>
+                <li><a href="#" data-page="settings" class="menu-link">
+                    <span>⚙️</span> Configurações
+                </a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div class="page" id="dashboard-page">
+                <header class="page-header">
+                    <h1>Dashboard</h1>
+                    <p>Visão geral das linhas telefônicas</p>
+                </header>
+
+                <!-- Summary Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📱</div>
+                        <div class="stat-content">
+                            <h3 id="total-lines">123</h3>
+                            <p>Total de Linhas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <h3 id="active-lines">113</h3>
+                            <p>Linhas Ativas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <h3 id="total-cost">R$ 11.911,30</h3>
+                            <p>Custo Total</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🏢</div>
+                        <div class="stat-content">
+                            <h3 id="total-entities">4</h3>
+                            <p>Entidades</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Entity Cards -->
+                <section class="section">
+                    <h2>Entidades</h2>
+                    <div class="entity-grid" id="entity-cards">
+                        <!-- Entity cards will be populated here -->
+                    </div>
+                </section>
+
+                <!-- Charts Section -->
+                <section class="section">
+                    <h2>Gráficos</h2>
+                    <div class="charts-grid">
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <h3>Distribuição por Entidade</h3>
+                            <canvas id="entity-chart"></canvas>
+                        </div>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <h3>Custos por Entidade</h3>
+                            <canvas id="cost-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Management Page -->
+            <div class="page hidden" id="management-page">
+                <header class="page-header">
+                    <h1>Gerenciamento de Linhas</h1>
+                    <button class="btn btn--primary" id="add-line-btn">
+                        ➕ Adicionar Linha
+                    </button>
+                </header>
+
+                <!-- Filters -->
+                <div class="filters-section">
+                    <div class="filters-grid">
+                        <div class="form-group">
+                            <input type="text" class="form-control" id="search-input" placeholder="Buscar por titular, número, plano...">
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="entity-filter">
+                                <option value="">Todas as Entidades</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="plan-filter">
+                                <option value="">Todos os Planos</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="status-filter">
+                                <option value="">Todos os Status</option>
+                                <option value="ativa">Ativa</option>
+                                <option value="inativa">Inativa</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Titular</th>
+                                <th>Número</th>
+                                <th>Plano</th>
+                                <th>Valor</th>
+                                <th>Entidade</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lines-table-body">
+                            <!-- Table rows will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reports Page -->
+            <div class="page hidden" id="reports-page">
+                <header class="page-header">
+                    <h1>Relatórios</h1>
+                    <p>Exportação de dados em PDF e Excel</p>
+                </header>
+
+                <div class="reports-grid">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Relatório PDF</h3>
+                            <p>Relatório completo com gráficos e análises</p>
+                            <button class="btn btn--primary" id="export-pdf-btn">
+                                📄 Exportar PDF
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Exportação Excel</h3>
+                            <p>Dados simples em formato CSV</p>
+                            <button class="btn btn--secondary" id="export-excel-btn">
+                                📊 Exportar Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Filters -->
+                <section class="section">
+                    <h2>Filtros do Relatório</h2>
+                    <div class="filters-grid">
+                        <div class="form-group">
+                            <label class="form-label">Entidade</label>
+                            <select class="form-control" id="report-entity-filter">
+                                <option value="">Todas as Entidades</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select class="form-control" id="report-status-filter">
+                                <option value="">Todos os Status</option>
+                                <option value="ativa">Ativa</option>
+                                <option value="inativa">Inativa</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page hidden" id="settings-page">
+                <header class="page-header">
+                    <h1>Configurações</h1>
+                    <p>Configurações do banco de dados</p>
+                </header>
+
+                <div class="card">
+                    <div class="card__body">
+                        <h3>Conexão NeonTech</h3>
+                        <form id="db-config-form">
+                            <div class="form-group">
+                                <label class="form-label">Database URL</label>
+                                <input type="text" class="form-control" id="database-url" 
+                                       value="postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">API Base URL</label>
+                                <input type="text" class="form-control" id="api-base-url" 
+                                       value="/.netlify/functions/api">
+                            </div>
+                            <div class="form-group">
+                                <button type="button" class="btn btn--primary" id="test-connection-btn">
+                                    🔗 Testar Conexão
+                                </button>
+                                <button type="submit" class="btn btn--secondary">
+                                    💾 Salvar Configurações
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Line Modal -->
+    <div class="modal hidden" id="line-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Adicionar Linha</h3>
+                <button class="modal-close" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="line-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Titular</label>
+                            <input type="text" class="form-control" id="titular" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Número</label>
+                            <input type="text" class="form-control" id="numerocelular" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Valor</label>
+                            <input type="number" step="0.01" class="form-control" id="valor" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Plano</label>
+                            <select class="form-control" id="plano" required>
+                                <option value="">Selecione um plano</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Responsável</label>
+                            <input type="text" class="form-control" id="responsavel" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Código Responsável</label>
+                            <input type="text" class="form-control" id="codigoresponsavel" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Conta Contábil</label>
+                            <input type="text" class="form-control" id="contacontabil" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Centro de Custo</label>
+                            <select class="form-control" id="centrocusto" required>
+                                <option value="">Selecione um centro de custo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Entidade</label>
+                            <select class="form-control" id="entidade" required>
+                                <option value="">Selecione uma entidade</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select class="form-control" id="status" required>
+                                <option value="ativa">Ativa</option>
+                                <option value="inativa">Inativa</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--outline" id="cancel-btn">Cancelar</button>
+                <button type="submit" form="line-form" class="btn btn--primary" id="save-btn">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Carregando...</p>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
