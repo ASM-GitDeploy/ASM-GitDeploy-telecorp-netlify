@@ -1,19 +1,32 @@
-// TeleCorp - Telephone Line Management Application
+// TeleCorp - Enhanced Telephone Line Management Application with Connection Fixes
 
 class TeleCorpApp {
     constructor() {
         this.currentPage = 'dashboard';
         this.isOnline = false;
-        this.operationMode = 'online';
+        this.operationMode = 'fallback'; // online, offline, fallback
         this.autoRefreshInterval = null;
         this.showNotifications = true;
+        this.enableDebug = true;
+        this.retryAttempts = 3;
+        this.retryDelay = 2000;
+        this.lastSync = null;
+        this.pendingOperations = [];
+        this.debugLogs = [];
         
-        // Fallback data structure
+        // Enhanced configuration
+        this.config = {
+            databaseUrl: "postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require",
+            apiBaseUrl: this.getApiBaseUrl(),
+            enableLogs: true,
+            retryAttempts: 3,
+            retryDelay: 2000,
+            fallbackMode: true,
+            autoRefresh: 30
+        };
+        
+        // Fallback data structure with enhanced data
         this.data = {
-            credenciais: {
-                databaseUrl: "postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require",
-                apiBaseUrl: "/.netlify/functions/api"
-            },
             entidades: [
                 {
                     nome: "145111",
@@ -86,53 +99,53 @@ class TeleCorpApp {
                 },
                 {
                     id: 3,
-                    titular: "Maria da Silva Costa",
-                    numerocelular: "(21) 95678-1234",
+                    titular: "Maria Silva",
+                    numerocelular: "(11) 98765-4321",
                     valor: 95.00,
-                    plano: "Digital Pro",
-                    responsavel: "Carlos Lima",
-                    contacontabil: "1.2.3.4.020",
-                    codigoresponsavel: "RES020",
+                    plano: "Premium",
+                    responsavel: "Carlos Santos",
+                    contacontabil: "1.2.3.4.030",
+                    codigoresponsavel: "RES030",
                     centrocusto: "CC002-Vendas",
                     entidade: "145121",
                     status: "ativa"
                 },
                 {
                     id: 4,
-                    titular: "Pedro Oliveira Santos",
-                    numerocelular: "(11) 94321-5678",
-                    valor: 65.00,
+                    titular: "Roberto Oliveira",
+                    numerocelular: "(19) 97654-3210",
+                    valor: 65.75,
                     plano: "Básico Plus",
-                    responsavel: "Ana Silva",
-                    contacontabil: "1.2.3.4.005",
-                    codigoresponsavel: "RES005",
+                    responsavel: "Ana Costa",
+                    contacontabil: "1.2.3.4.045",
+                    codigoresponsavel: "RES045",
                     centrocusto: "CC004-Logística",
                     entidade: "145122",
-                    status: "inativa"
-                },
-                {
-                    id: 5,
-                    titular: "Carlos Eduardo Pereira",
-                    numerocelular: "(85) 98765-4321",
-                    valor: 135.00,
-                    plano: "Corporativo Max",
-                    responsavel: "Fernanda Costa",
-                    contacontabil: "1.2.3.4.030",
-                    codigoresponsavel: "RES030",
-                    centrocusto: "CC001-Administração",
-                    entidade: "145111",
                     status: "ativa"
                 },
                 {
+                    id: 5,
+                    titular: "Paula Costa",
+                    numerocelular: "(11) 96543-2109",
+                    valor: 110.25,
+                    plano: "Corporativo",
+                    responsavel: "José Lima",
+                    contacontabil: "1.2.3.4.060",
+                    codigoresponsavel: "RES060",
+                    centrocusto: "CC005-Suporte",
+                    entidade: "145111",
+                    status: "inativa"
+                },
+                {
                     id: 6,
-                    titular: "Ana Paula Rodrigues",
-                    numerocelular: "(47) 99123-4567",
-                    valor: 85.75,
-                    plano: "Digital Basic",
-                    responsavel: "Roberto Silva",
-                    contacontabil: "1.2.3.4.040",
-                    codigoresponsavel: "RES040",
-                    centrocusto: "CC002-Vendas",
+                    titular: "Fernando Santos",
+                    numerocelular: "(19) 95432-1098",
+                    valor: 88.50,
+                    plano: "Digital Pro",
+                    responsavel: "Lucia Silva",
+                    contacontabil: "1.2.3.4.075",
+                    codigoresponsavel: "RES075",
+                    centrocusto: "CC001-Administração",
                     entidade: "145112",
                     status: "ativa"
                 }
@@ -146,7 +159,16 @@ class TeleCorpApp {
         this.init();
     }
 
+    getApiBaseUrl() {
+        // Dynamic API URL based on environment
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:8888/.netlify/functions/api';
+        }
+        return '/.netlify/functions/api';
+    }
+
     async init() {
+        this.debugLog('info', 'Iniciando aplicação TeleCorp...');
         this.bindEvents();
         this.populateDropdowns();
         await this.checkConnection();
@@ -155,6 +177,54 @@ class TeleCorpApp {
         this.renderLineTable();
         this.setupAutoRefresh();
         this.updateSystemInfo();
+        this.debugLog('success', 'Aplicação iniciada com sucesso');
+    }
+
+    debugLog(level, message, data = null) {
+        if (!this.enableDebug) return;
+        
+        const timestamp = new Date().toLocaleTimeString('pt-BR');
+        const logEntry = {
+            timestamp,
+            level,
+            message,
+            data
+        };
+        
+        this.debugLogs.push(logEntry);
+        
+        // Keep only last 100 logs
+        if (this.debugLogs.length > 100) {
+            this.debugLogs = this.debugLogs.slice(-100);
+        }
+        
+        // Update debug console
+        this.updateDebugConsole();
+        
+        // Console log for debugging
+        const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
+        if (data) {
+            console.log(prefix, message, data);
+        } else {
+            console.log(prefix, message);
+        }
+    }
+
+    updateDebugConsole() {
+        const debugConsole = document.querySelector('.debug-log');
+        if (!debugConsole) return;
+        
+        const logHTML = this.debugLogs.map(log => `
+            <div class="debug-entry">
+                <span class="debug-timestamp">${log.timestamp}</span>
+                <span class="debug-level-${log.level}">[${log.level.toUpperCase()}]</span>
+                ${log.message}
+                ${log.data ? `\n${JSON.stringify(log.data, null, 2)}` : ''}
+            </div>
+        `).join('');
+        
+        debugConsole.innerHTML = logHTML || 'Aguardando logs...';
+        debugConsole.scrollTop = debugConsole.scrollHeight;
     }
 
     bindEvents() {
@@ -167,7 +237,6 @@ class TeleCorpApp {
                 sidebar.classList.toggle('open');
             });
 
-            // Close sidebar when clicking outside on mobile
             document.addEventListener('click', (e) => {
                 if (window.innerWidth <= 768 && 
                     !sidebar.contains(e.target) && 
@@ -185,14 +254,14 @@ class TeleCorpApp {
                 const page = e.target.closest('.menu-link').dataset.page;
                 this.showPage(page);
                 
-                // Close mobile menu after navigation
                 if (window.innerWidth <= 768) {
                     sidebar?.classList.remove('open');
                 }
             });
         });
 
-        // Line management
+        // Connection and management
+        document.getElementById('force-reconnect-btn')?.addEventListener('click', () => this.forceReconnect());
         document.getElementById('add-line-btn')?.addEventListener('click', () => this.openLineModal());
         document.getElementById('refresh-lines-btn')?.addEventListener('click', () => this.refreshData());
         document.getElementById('close-modal')?.addEventListener('click', () => this.closeLineModal());
@@ -216,55 +285,132 @@ class TeleCorpApp {
         document.getElementById('report-max-value')?.addEventListener('input', () => this.updateReportPreview());
 
         // Settings
-        document.getElementById('test-connection-btn')?.addEventListener('click', () => this.testConnection());
+        document.getElementById('test-connection-btn')?.addEventListener('click', () => this.testConnectionComplete());
         document.getElementById('db-config-form')?.addEventListener('submit', (e) => this.saveConfig(e));
         document.getElementById('reset-config-btn')?.addEventListener('click', () => this.resetConfig());
         document.getElementById('operation-mode')?.addEventListener('change', (e) => {
             this.operationMode = e.target.value;
+            this.debugLog('info', `Modo de operação alterado para: ${this.operationMode}`);
             this.updateConnectionStatus();
         });
         document.getElementById('auto-refresh')?.addEventListener('change', (e) => {
             this.setupAutoRefresh(parseInt(e.target.value));
         });
+        document.getElementById('retry-attempts')?.addEventListener('change', (e) => {
+            this.retryAttempts = parseInt(e.target.value);
+        });
+        document.getElementById('retry-delay')?.addEventListener('change', (e) => {
+            this.retryDelay = parseInt(e.target.value) * 1000;
+        });
+        document.getElementById('enable-debug')?.addEventListener('change', (e) => {
+            this.enableDebug = e.target.checked;
+            this.debugLog('info', `Debug mode: ${this.enableDebug ? 'ativado' : 'desativado'}`);
+        });
         document.getElementById('show-notifications')?.addEventListener('change', (e) => {
             this.showNotifications = e.target.checked;
         });
+
+        // Debug console actions
+        document.getElementById('clear-debug')?.addEventListener('click', () => {
+            this.debugLogs = [];
+            this.updateDebugConsole();
+        });
+        document.getElementById('download-logs')?.addEventListener('click', () => this.downloadLogs());
 
         // Modal backdrop click
         document.querySelector('.modal-backdrop')?.addEventListener('click', () => this.closeLineModal());
     }
 
     async checkConnection() {
+        this.debugLog('info', 'Verificando conexão...');
+        
         try {
             this.updateConnectionStatus('checking');
             
             if (this.operationMode === 'offline') {
                 this.isOnline = false;
                 this.updateConnectionStatus('offline');
+                this.debugLog('info', 'Modo offline ativo');
                 return;
             }
 
-            const response = await fetch(this.data.credenciais.apiBaseUrl + '/test');
-            this.isOnline = response.ok;
+            const response = await this.retryOperation(() => 
+                fetch(this.config.apiBaseUrl + '/test', { 
+                    method: 'GET',
+                    timeout: 5000 
+                })
+            );
+            
+            this.isOnline = response && response.ok;
             
             if (this.isOnline) {
                 this.updateConnectionStatus('connected');
+                this.debugLog('success', 'Conexão estabelecida com sucesso');
+                this.lastSync = new Date();
+                
                 // Try to load data from API
-                await this.loadDataFromAPI();
+                if (this.operationMode === 'online' || this.operationMode === 'fallback') {
+                    await this.loadDataFromAPI();
+                }
+            } else {
+                throw new Error('API response not ok');
+            }
+        } catch (error) {
+            this.debugLog('error', 'Falha na conexão', error.message);
+            this.isOnline = false;
+            
+            if (this.operationMode === 'fallback') {
+                this.updateConnectionStatus('disconnected');
+                this.debugLog('warn', 'Usando dados locais como fallback');
             } else {
                 this.updateConnectionStatus('disconnected');
             }
+        }
+        
+        this.updateSystemDisplays();
+    }
+
+    async retryOperation(operation, attempts = this.retryAttempts) {
+        for (let i = 0; i < attempts; i++) {
+            try {
+                this.debugLog('info', `Tentativa ${i + 1} de ${attempts}`);
+                const result = await operation();
+                return result;
+            } catch (error) {
+                this.debugLog('warn', `Tentativa ${i + 1} falhou: ${error.message}`);
+                
+                if (i === attempts - 1) {
+                    throw error;
+                }
+                
+                // Exponential backoff
+                const delay = this.retryDelay * Math.pow(2, i);
+                this.debugLog('info', `Aguardando ${delay}ms antes da próxima tentativa`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+
+    async forceReconnect() {
+        this.debugLog('info', 'Forçando reconexão...');
+        this.showLoading('Reconnectando...');
+        
+        try {
+            await this.checkConnection();
+            this.showToast('Reconexão realizada!', 'success');
         } catch (error) {
-            console.warn('API not available, using fallback data:', error);
-            this.isOnline = false;
-            this.updateConnectionStatus('disconnected');
+            this.showToast('Falha na reconexão', 'error');
+        } finally {
+            this.hideLoading();
         }
     }
 
     updateConnectionStatus(status = null) {
         const indicator = document.getElementById('status-indicator');
         const text = document.getElementById('status-text');
-        const apiStatus = document.getElementById('api-status');
+        const subtitle = document.getElementById('status-subtitle');
+        const detailedStatus = document.getElementById('detailed-connection-status');
+        const operationModeDisplay = document.getElementById('operation-mode-display');
         
         if (!indicator || !text) return;
 
@@ -282,27 +428,131 @@ class TeleCorpApp {
             offline: 'Modo Offline'
         };
         
-        text.textContent = statusTexts[status] || 'Desconhecido';
+        const statusSubtitles = {
+            checking: 'Testando API...',
+            connected: 'API respondendo',
+            disconnected: 'API não disponível',
+            offline: 'Dados locais'
+        };
         
-        if (apiStatus) {
-            apiStatus.textContent = statusTexts[status] || 'Desconhecido';
+        text.textContent = statusTexts[status] || 'Desconhecido';
+        if (subtitle) subtitle.textContent = statusSubtitles[status] || '';
+        
+        if (detailedStatus) {
+            detailedStatus.className = 'info-value status-indicator-text ' + status;
+            detailedStatus.textContent = statusTexts[status] || 'Desconhecido';
         }
+        
+        if (operationModeDisplay) {
+            const modeTexts = {
+                online: 'Online',
+                offline: 'Offline',
+                fallback: 'Fallback Automático'
+            };
+            operationModeDisplay.textContent = modeTexts[this.operationMode] || this.operationMode;
+        }
+    }
+
+    updateSystemDisplays() {
+        // Update record counts
+        const localRecords = document.getElementById('local-records');
+        const remoteRecords = document.getElementById('remote-records');
+        const lastSyncDisplay = document.getElementById('last-sync-display');
+        const lastSync = document.getElementById('last-sync');
+        const pendingOps = document.getElementById('pending-operations');
+        const lastApiAttempt = document.getElementById('last-api-attempt');
+        const localRecordCount = document.getElementById('local-record-count');
+        
+        if (localRecords) localRecords.textContent = this.data.linhas.length;
+        if (remoteRecords) remoteRecords.textContent = this.isOnline ? this.data.linhas.length : '-';
+        
+        const syncText = this.lastSync ? this.lastSync.toLocaleString('pt-BR') : 'Nunca';
+        if (lastSyncDisplay) lastSyncDisplay.textContent = syncText;
+        if (lastSync) lastSync.textContent = syncText;
+        
+        if (pendingOps) pendingOps.textContent = this.pendingOperations.length;
+        if (lastApiAttempt) lastApiAttempt.textContent = new Date().toLocaleString('pt-BR');
+        if (localRecordCount) localRecordCount.textContent = this.data.linhas.length;
     }
 
     async loadDataFromAPI() {
         try {
-            // Try to load lines from API
-            const response = await fetch(this.data.credenciais.apiBaseUrl + '/linhas');
+            this.debugLog('info', 'Carregando dados da API...');
+            
+            const response = await fetch(this.config.apiBaseUrl + '/linhas');
             if (response.ok) {
                 const apiData = await response.json();
                 if (apiData.linhas && Array.isArray(apiData.linhas)) {
                     this.data.linhas = apiData.linhas;
                     this.filteredLines = [...this.data.linhas];
+                    this.debugLog('success', `${apiData.linhas.length} registros carregados da API`);
                 }
             }
         } catch (error) {
-            console.warn('Failed to load data from API, using fallback data');
+            this.debugLog('warn', 'Falha ao carregar dados da API, usando dados locais');
         }
+    }
+
+    async testConnectionComplete() {
+        const resultsContainer = document.getElementById('connection-test-results');
+        if (!resultsContainer) return;
+        
+        resultsContainer.classList.add('show');
+        resultsContainer.innerHTML = '';
+        
+        const tests = [
+            {
+                name: 'Conectividade de Rede',
+                test: () => fetch('https://httpbin.org/get', { method: 'GET', timeout: 5000 })
+            },
+            {
+                name: 'Endpoint da API',
+                test: () => fetch(this.config.apiBaseUrl + '/test', { method: 'GET', timeout: 5000 })
+            },
+            {
+                name: 'Query no Banco',
+                test: () => fetch(this.config.apiBaseUrl + '/linhas', { method: 'GET', timeout: 10000 })
+            }
+        ];
+        
+        this.debugLog('info', 'Iniciando teste completo de conexão...');
+        
+        for (const testItem of tests) {
+            const stepElement = document.createElement('div');
+            stepElement.className = 'test-step testing';
+            stepElement.innerHTML = `
+                <div class="test-step-icon">⏳</div>
+                <div>${testItem.name}: Testando...</div>
+            `;
+            resultsContainer.appendChild(stepElement);
+            
+            try {
+                const response = await testItem.test();
+                if (response.ok) {
+                    stepElement.className = 'test-step success';
+                    stepElement.innerHTML = `
+                        <div class="test-step-icon">✅</div>
+                        <div>${testItem.name}: Sucesso (${response.status})</div>
+                    `;
+                    this.debugLog('success', `Teste ${testItem.name}: Sucesso`);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                stepElement.className = 'test-step error';
+                stepElement.innerHTML = `
+                    <div class="test-step-icon">❌</div>
+                    <div>${testItem.name}: Falha (${error.message})</div>
+                `;
+                this.debugLog('error', `Teste ${testItem.name}: Falha`, error.message);
+            }
+            
+            // Small delay between tests
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        // Update connection status after complete test
+        await this.checkConnection();
     }
 
     showPage(pageId) {
@@ -338,7 +588,7 @@ class TeleCorpApp {
 
         entitySelects.forEach(selectId => {
             const select = document.getElementById(selectId);
-            if (select && select.children.length <= 1) { // Only populate if empty
+            if (select && select.children.length <= 1) {
                 this.data.entidades.forEach(entidade => {
                     const option = document.createElement('option');
                     option.value = entidade.nome;
@@ -350,7 +600,6 @@ class TeleCorpApp {
 
         // Plan dropdowns
         const planSelects = ['plan-filter', 'plano'];
-
         planSelects.forEach(selectId => {
             const select = document.getElementById(selectId);
             if (select && select.children.length <= 1) {
@@ -604,7 +853,6 @@ class TeleCorpApp {
         if (saveBtn) saveBtn.textContent = line ? 'Atualizar' : 'Salvar';
 
         if (line) {
-            // Populate form with existing data
             Object.keys(line).forEach(key => {
                 const input = document.getElementById(key);
                 if (input) {
@@ -640,7 +888,6 @@ class TeleCorpApp {
             const formData = new FormData(e.target);
             const lineData = {};
 
-            // Get all form fields
             const fields = ['titular', 'numerocelular', 'valor', 'plano', 'responsavel', 
                            'codigoresponsavel', 'contacontabil', 'centrocusto', 'entidade', 'status'];
             
@@ -651,41 +898,43 @@ class TeleCorpApp {
                 }
             });
 
-            // Convert valor to number
             lineData.valor = parseFloat(lineData.valor);
 
             if (this.editingLine) {
-                // Update existing line
                 lineData.id = this.editingLine.id;
                 const index = this.data.linhas.findIndex(l => l.id === this.editingLine.id);
                 if (index !== -1) {
                     this.data.linhas[index] = { ...this.data.linhas[index], ...lineData };
                 }
                 
-                // Try to update via API if online
-                if (this.isOnline && this.operationMode === 'online') {
+                if (this.isOnline && this.operationMode !== 'offline') {
                     await this.updateLineAPI(lineData);
+                } else {
+                    this.queueOperation('update', lineData);
                 }
                 
                 this.showToast('Linha atualizada com sucesso!', 'success');
+                this.debugLog('success', 'Linha atualizada', lineData);
             } else {
-                // Add new line
                 lineData.id = Math.max(...this.data.linhas.map(l => l.id), 0) + 1;
                 this.data.linhas.push(lineData);
                 
-                // Try to add via API if online
-                if (this.isOnline && this.operationMode === 'online') {
+                if (this.isOnline && this.operationMode !== 'offline') {
                     await this.addLineAPI(lineData);
+                } else {
+                    this.queueOperation('create', lineData);
                 }
                 
                 this.showToast('Linha adicionada com sucesso!', 'success');
+                this.debugLog('success', 'Nova linha adicionada', lineData);
             }
 
             this.closeLineModal();
             this.applyFilters();
             this.updateDashboard();
+            this.updateSystemDisplays();
         } catch (error) {
-            console.error('Error saving line:', error);
+            this.debugLog('error', 'Erro ao salvar linha', error.message);
             this.showToast('Erro ao salvar linha', 'error');
         } finally {
             if (saveBtn) {
@@ -695,30 +944,70 @@ class TeleCorpApp {
         }
     }
 
+    queueOperation(type, data) {
+        this.pendingOperations.push({
+            type,
+            data,
+            timestamp: new Date()
+        });
+        this.debugLog('info', `Operação enfileirada: ${type}`, data);
+    }
+
+    async processPendingOperations() {
+        if (!this.isOnline || this.pendingOperations.length === 0) return;
+        
+        this.debugLog('info', `Processando ${this.pendingOperations.length} operações pendentes`);
+        
+        const operations = [...this.pendingOperations];
+        this.pendingOperations = [];
+        
+        for (const operation of operations) {
+            try {
+                switch (operation.type) {
+                    case 'create':
+                        await this.addLineAPI(operation.data);
+                        break;
+                    case 'update':
+                        await this.updateLineAPI(operation.data);
+                        break;
+                    case 'delete':
+                        await this.deleteLineAPI(operation.data.id);
+                        break;
+                }
+                this.debugLog('success', `Operação ${operation.type} sincronizada`);
+            } catch (error) {
+                this.debugLog('error', `Falha ao sincronizar ${operation.type}`, error.message);
+                this.pendingOperations.push(operation); // Re-queue failed operation
+            }
+        }
+        
+        this.updateSystemDisplays();
+    }
+
     async addLineAPI(lineData) {
         try {
-            const response = await fetch(this.data.credenciais.apiBaseUrl + '/linhas', {
+            const response = await fetch(this.config.apiBaseUrl + '/linhas', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(lineData)
             });
             return response.ok;
         } catch (error) {
-            console.warn('Failed to add line via API:', error);
+            this.debugLog('warn', 'Falha na API ao adicionar linha', error.message);
             return false;
         }
     }
 
     async updateLineAPI(lineData) {
         try {
-            const response = await fetch(this.data.credenciais.apiBaseUrl + '/linhas/' + lineData.id, {
+            const response = await fetch(this.config.apiBaseUrl + '/linhas/' + lineData.id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(lineData)
             });
             return response.ok;
         } catch (error) {
-            console.warn('Failed to update line via API:', error);
+            this.debugLog('warn', 'Falha na API ao atualizar linha', error.message);
             return false;
         }
     }
@@ -737,43 +1026,52 @@ class TeleCorpApp {
             const lineIndex = this.data.linhas.findIndex(l => l.id === id);
             if (lineIndex === -1) return;
 
-            // Try to delete via API if online
-            if (this.isOnline && this.operationMode === 'online') {
+            if (this.isOnline && this.operationMode !== 'offline') {
                 await this.deleteLineAPI(id);
+            } else {
+                this.queueOperation('delete', { id });
             }
 
             this.data.linhas.splice(lineIndex, 1);
             this.applyFilters();
             this.updateDashboard();
+            this.updateSystemDisplays();
             this.showToast('Linha excluída com sucesso!', 'success');
+            this.debugLog('success', `Linha ${id} excluída`);
         } catch (error) {
-            console.error('Error deleting line:', error);
+            this.debugLog('error', 'Erro ao excluir linha', error.message);
             this.showToast('Erro ao excluir linha', 'error');
         }
     }
 
     async deleteLineAPI(id) {
         try {
-            const response = await fetch(this.data.credenciais.apiBaseUrl + '/linhas/' + id, {
+            const response = await fetch(this.config.apiBaseUrl + '/linhas/' + id, {
                 method: 'DELETE'
             });
             return response.ok;
         } catch (error) {
-            console.warn('Failed to delete line via API:', error);
+            this.debugLog('warn', 'Falha na API ao excluir linha', error.message);
             return false;
         }
     }
 
     async refreshData() {
         this.showLoading('Atualizando dados...');
+        this.debugLog('info', 'Iniciando atualização de dados');
         
         try {
             await this.checkConnection();
+            
+            if (this.isOnline) {
+                await this.processPendingOperations();
+            }
+            
             this.applyFilters();
             this.updateDashboard();
             this.showToast('Dados atualizados com sucesso!', 'success');
         } catch (error) {
-            console.error('Error refreshing data:', error);
+            this.debugLog('error', 'Erro ao atualizar dados', error.message);
             this.showToast('Erro ao atualizar dados', 'error');
         } finally {
             this.hideLoading();
@@ -828,7 +1126,6 @@ class TeleCorpApp {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
 
-                // Header
                 doc.setFontSize(20);
                 doc.text('Relatório de Linhas Telefônicas', 20, 30);
                 
@@ -836,16 +1133,13 @@ class TeleCorpApp {
                 doc.text('TeleCorp - Sistema de Gerenciamento', 20, 40);
                 doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 50);
 
-                // Statistics
                 const stats = this.calculateStatistics();
                 doc.text(`Total de Linhas: ${stats.totalLinhas}`, 20, 70);
                 doc.text(`Linhas Ativas: ${stats.linhasAtivas}`, 20, 80);
                 doc.text(`Custo Total: ${this.formatCurrency(stats.custoTotal)}`, 20, 90);
 
-                // Get filtered data for report
                 const reportData = this.getReportData();
                 
-                // Table
                 const tableData = reportData.map(linha => [
                     linha.titular,
                     linha.numerocelular,
@@ -867,8 +1161,9 @@ class TeleCorpApp {
 
                 doc.save('relatorio-linhas-telefonicas.pdf');
                 this.showToast('PDF exportado com sucesso!', 'success');
+                this.debugLog('success', 'Relatório PDF gerado');
             } catch (error) {
-                console.error('Erro ao exportar PDF:', error);
+                this.debugLog('error', 'Erro ao exportar PDF', error.message);
                 this.showToast('Erro ao exportar PDF', 'error');
             } finally {
                 this.hideLoading();
@@ -910,8 +1205,9 @@ class TeleCorpApp {
             document.body.removeChild(link);
             
             this.showToast('Excel exportado com sucesso!', 'success');
+            this.debugLog('success', 'Relatório Excel gerado');
         } catch (error) {
-            console.error('Erro ao exportar Excel:', error);
+            this.debugLog('error', 'Erro ao exportar Excel', error.message);
             this.showToast('Erro ao exportar Excel', 'error');
         }
     }
@@ -931,59 +1227,42 @@ class TeleCorpApp {
         });
     }
 
-    async testConnection() {
-        this.showLoading('Testando conexão...');
-        
-        try {
-            const response = await fetch(this.data.credenciais.apiBaseUrl + '/test', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (response.ok) {
-                this.isOnline = true;
-                this.updateConnectionStatus('connected');
-                this.showToast('Conexão testada com sucesso!', 'success');
-            } else {
-                throw new Error('Connection failed');
-            }
-        } catch (error) {
-            this.isOnline = false;
-            this.updateConnectionStatus('disconnected');
-            this.showToast('Falha na conexão. Verifique as credenciais.', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
     saveConfig(e) {
         e.preventDefault();
         
         const databaseUrl = document.getElementById('database-url')?.value || '';
         const apiBaseUrl = document.getElementById('api-base-url')?.value || '';
         
-        this.data.credenciais = { databaseUrl, apiBaseUrl };
+        this.config.databaseUrl = databaseUrl;
+        this.config.apiBaseUrl = apiBaseUrl;
         
         this.showToast('Configurações salvas com sucesso!', 'success');
+        this.debugLog('success', 'Configurações salvas', this.config);
         
-        // Re-check connection with new settings
         this.checkConnection();
     }
 
     resetConfig() {
         document.getElementById('database-url').value = "postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require";
-        document.getElementById('api-base-url').value = "/.netlify/functions/api";
+        document.getElementById('api-base-url').value = this.getApiBaseUrl();
         
         this.showToast('Configurações restauradas!', 'info');
+        this.debugLog('info', 'Configurações restauradas para padrão');
     }
 
     loadSettings() {
         const operationModeSelect = document.getElementById('operation-mode');
         const autoRefreshInput = document.getElementById('auto-refresh');
+        const retryAttemptsInput = document.getElementById('retry-attempts');
+        const retryDelayInput = document.getElementById('retry-delay');
+        const enableDebugCheck = document.getElementById('enable-debug');
         const showNotificationsCheck = document.getElementById('show-notifications');
         
         if (operationModeSelect) operationModeSelect.value = this.operationMode;
         if (autoRefreshInput) autoRefreshInput.value = 30;
+        if (retryAttemptsInput) retryAttemptsInput.value = this.retryAttempts;
+        if (retryDelayInput) retryDelayInput.value = this.retryDelay / 1000;
+        if (enableDebugCheck) enableDebugCheck.checked = this.enableDebug;
         if (showNotificationsCheck) showNotificationsCheck.checked = this.showNotifications;
     }
 
@@ -992,24 +1271,38 @@ class TeleCorpApp {
             clearInterval(this.autoRefreshInterval);
         }
         
-        if (intervalSeconds > 0 && this.operationMode === 'online') {
-            this.autoRefreshInterval = setInterval(() => {
-                this.checkConnection();
+        if (intervalSeconds > 0 && this.operationMode !== 'offline') {
+            this.autoRefreshInterval = setInterval(async () => {
+                this.debugLog('info', 'Auto-refresh executado');
+                await this.checkConnection();
+                if (this.isOnline) {
+                    await this.processPendingOperations();
+                }
+                this.updateSystemDisplays();
             }, intervalSeconds * 1000);
         }
     }
 
     updateSystemInfo() {
-        const lastUpdate = document.getElementById('last-update');
-        const totalRecords = document.getElementById('total-records');
+        this.updateSystemDisplays();
+    }
+
+    downloadLogs() {
+        const logsText = this.debugLogs.map(log => 
+            `[${log.timestamp}] [${log.level.toUpperCase()}] ${log.message}${log.data ? '\n' + JSON.stringify(log.data, null, 2) : ''}`
+        ).join('\n\n');
         
-        if (lastUpdate) {
-            lastUpdate.textContent = new Date().toLocaleString('pt-BR');
-        }
+        const blob = new Blob([logsText], { type: 'text/plain' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
         
-        if (totalRecords) {
-            totalRecords.textContent = this.data.linhas.length.toString();
-        }
+        link.setAttribute('href', url);
+        link.setAttribute('download', `telecorp-logs-${new Date().toISOString().slice(0, 10)}.txt`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        this.showToast('Logs baixados com sucesso!', 'success');
     }
 
     showLoading(message = 'Carregando...') {

@@ -738,9 +738,235 @@ select.form-control {
 }
 
 /* END PERPLEXITY DESIGN SYSTEM */
-/* Additional styles for the Telephone Line Management App */
+/* Additional styles for the improved TeleCorp Application */
 
-/* Mobile menu toggle */
+/* Enhanced Connection Status */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-16);
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-sm);
+  min-width: 200px;
+}
+
+.status-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.status-details small {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
+
+.status-indicator.connected {
+  background: var(--color-success);
+  animation: none;
+  box-shadow: 0 0 0 2px rgba(var(--color-success-rgb), 0.2);
+}
+
+.status-indicator.disconnected {
+  background: var(--color-error);
+  animation: none;
+}
+
+.status-indicator.offline {
+  background: var(--color-info);
+  animation: none;
+}
+
+.status-indicator.checking {
+  background: var(--color-warning);
+  animation: pulse 1s infinite;
+}
+
+/* System Status Panel */
+.system-status-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-16);
+  margin-bottom: var(--space-24);
+  padding: var(--space-16);
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(10px);
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-8) 0;
+}
+
+.status-label {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+}
+
+.status-value {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+}
+
+.status-indicator-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.status-indicator-text::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.status-indicator-text.connected::before {
+  background: var(--color-success);
+}
+
+.status-indicator-text.disconnected::before {
+  background: var(--color-error);
+}
+
+.status-indicator-text.offline::before {
+  background: var(--color-info);
+}
+
+/* Connection Test Results */
+.connection-test-results {
+  margin: var(--space-16) 0;
+  padding: var(--space-12);
+  background: var(--color-bg-1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  display: none;
+}
+
+.connection-test-results.show {
+  display: block;
+}
+
+.test-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+  font-size: var(--font-size-sm);
+}
+
+.test-step:last-child {
+  margin-bottom: 0;
+}
+
+.test-step-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
+}
+
+.test-step.success .test-step-icon {
+  color: var(--color-success);
+}
+
+.test-step.error .test-step-icon {
+  color: var(--color-error);
+}
+
+.test-step.testing .test-step-icon {
+  color: var(--color-warning);
+  animation: spin 1s linear infinite;
+}
+
+/* Debug Console */
+.debug-console {
+  background: var(--color-charcoal-800);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-12);
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  margin-bottom: var(--space-12);
+}
+
+.debug-log {
+  color: var(--color-gray-200);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.debug-entry {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid rgba(var(--color-gray-400-rgb), 0.1);
+}
+
+.debug-entry:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.debug-timestamp {
+  color: var(--color-gray-400);
+  margin-right: var(--space-8);
+}
+
+.debug-level-info {
+  color: var(--color-teal-300);
+}
+
+.debug-level-warn {
+  color: var(--color-orange-400);
+}
+
+.debug-level-error {
+  color: var(--color-red-400);
+}
+
+.debug-level-success {
+  color: var(--color-success);
+}
+
+.debug-actions {
+  display: flex;
+  gap: var(--space-8);
+}
+
+/* Form Help Text */
+.form-help {
+  display: block;
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.3;
+}
+
+/* Enhanced Mobile Menu */
 .mobile-menu-toggle {
   display: none;
   position: fixed;
@@ -886,41 +1112,6 @@ select.form-control {
   align-items: center;
   gap: var(--space-16);
   flex-wrap: wrap;
-}
-
-/* Connection Status */
-.connection-status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-6) var(--space-12);
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-sm);
-}
-
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-warning);
-  animation: pulse 2s infinite;
-}
-
-.status-indicator.connected {
-  background: var(--color-success);
-  animation: none;
-}
-
-.status-indicator.disconnected {
-  background: var(--color-error);
-  animation: none;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
 }
 
 /* Stats Grid */
@@ -1449,6 +1640,11 @@ select.form-control {
   100% { transform: rotate(360deg); }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .mobile-menu-toggle {
@@ -1488,6 +1684,10 @@ select.form-control {
     justify-content: center;
   }
   
+  .system-status-panel {
+    grid-template-columns: 1fr;
+  }
+  
   .modal-content {
     margin: var(--space-16);
     max-width: none;
@@ -1522,6 +1722,15 @@ select.form-control {
   .toast {
     max-width: none;
   }
+  
+  .connection-status {
+    min-width: auto;
+    flex: 1;
+  }
+  
+  .debug-actions {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1543,5 +1752,11 @@ select.form-control {
     align-items: center;
     text-align: center;
     gap: var(--space-8);
+  }
+  
+  .status-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
   }
 }

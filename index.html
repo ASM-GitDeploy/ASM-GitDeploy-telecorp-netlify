@@ -45,10 +45,35 @@
                     <div class="header-actions">
                         <div class="connection-status" id="connection-status">
                             <span class="status-indicator" id="status-indicator"></span>
-                            <span id="status-text">Verificando conexão...</span>
+                            <div class="status-details">
+                                <span id="status-text">Verificando conexão...</span>
+                                <small id="status-subtitle">Carregando...</small>
+                            </div>
                         </div>
+                        <button class="btn btn--outline btn--sm" id="force-reconnect-btn">
+                            🔄 Reconectar
+                        </button>
                     </div>
                 </header>
+
+                <!-- System Status Panel -->
+                <div class="system-status-panel">
+                    <div class="status-item">
+                        <span class="status-label">Modo de Operação:</span>
+                        <span class="status-value" id="operation-mode-display">Online</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Última Sincronização:</span>
+                        <span class="status-value" id="last-sync-display">Nunca</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Total de Registros:</span>
+                        <span class="status-value">
+                            <span id="local-records">0</span> local / 
+                            <span id="remote-records">-</span> remoto
+                        </span>
+                    </div>
+                </div>
 
                 <!-- Summary Cards -->
                 <div class="stats-grid">
@@ -251,29 +276,35 @@
             <div class="page hidden" id="settings-page">
                 <header class="page-header">
                     <h1>Configurações</h1>
-                    <p>Configurações do sistema e banco de dados</p>
+                    <p>Configurações do sistema e conexão com banco de dados</p>
                 </header>
 
                 <div class="settings-grid">
                     <div class="card">
                         <div class="card__header">
-                            <h3>🔗 Conexão com Banco de Dados</h3>
+                            <h3>🔗 Configuração de Conexão</h3>
                         </div>
                         <div class="card__body">
                             <form id="db-config-form">
                                 <div class="form-group">
-                                    <label class="form-label">Database URL (PostgreSQL)</label>
-                                    <input type="text" class="form-control" id="database-url" 
-                                           value="postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require">
+                                    <label class="form-label">Database URL Completa (PostgreSQL)</label>
+                                    <textarea class="form-control" id="database-url" rows="3" 
+                                              placeholder="postgresql://usuario:senha@host:porta/database?parametros">postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require</textarea>
+                                    <small class="form-help">Cole a URL completa de conexão com o NeonTech</small>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">API Base URL</label>
                                     <input type="text" class="form-control" id="api-base-url" 
-                                           value="/.netlify/functions/api">
+                                           value="/.netlify/functions/api"
+                                           placeholder="http://localhost:8888/.netlify/functions/api">
+                                    <small class="form-help">URL base da API (adapta-se automaticamente para produção)</small>
+                                </div>
+                                <div class="connection-test-results" id="connection-test-results">
+                                    <!-- Test results will appear here -->
                                 </div>
                                 <div class="form-actions">
                                     <button type="button" class="btn btn--outline" id="test-connection-btn">
-                                        🔗 Testar Conexão
+                                        🔗 Testar Conexão Completa
                                     </button>
                                     <button type="submit" class="btn btn--primary">
                                         💾 Salvar Configurações
@@ -288,7 +319,7 @@
 
                     <div class="card">
                         <div class="card__header">
-                            <h3>🔧 Configurações do Sistema</h3>
+                            <h3>🔧 Configurações Avançadas</h3>
                         </div>
                         <div class="card__body">
                             <div class="form-group">
@@ -296,11 +327,26 @@
                                 <select class="form-control" id="operation-mode">
                                     <option value="online">Online (com banco de dados)</option>
                                     <option value="offline">Offline (dados locais)</option>
+                                    <option value="fallback">Fallback automático</option>
                                 </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tentativas de Reconexão</label>
+                                <input type="number" class="form-control" id="retry-attempts" value="3" min="1" max="10">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Intervalo de Retry (segundos)</label>
+                                <input type="number" class="form-control" id="retry-delay" value="2" min="1" max="30">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Auto-refresh (segundos)</label>
                                 <input type="number" class="form-control" id="auto-refresh" value="30" min="10" max="300">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <input type="checkbox" id="enable-debug" checked> 
+                                    Habilitar modo debug (logs detalhados)
+                                </label>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">
@@ -313,26 +359,54 @@
 
                     <div class="card">
                         <div class="card__header">
-                            <h3>📊 Informações do Sistema</h3>
+                            <h3>📊 Status do Sistema</h3>
                         </div>
                         <div class="card__body">
                             <div class="system-info">
                                 <div class="info-item">
                                     <span class="info-label">Versão:</span>
-                                    <span class="info-value">1.0.0</span>
+                                    <span class="info-value">1.0.0-corrigida</span>
                                 </div>
                                 <div class="info-item">
-                                    <span class="info-label">Última atualização:</span>
-                                    <span class="info-value" id="last-update">-</span>
+                                    <span class="info-label">Status da Conexão:</span>
+                                    <span class="info-value status-indicator-text" id="detailed-connection-status">Verificando...</span>
                                 </div>
                                 <div class="info-item">
-                                    <span class="info-label">Status da API:</span>
-                                    <span class="info-value" id="api-status">Verificando...</span>
+                                    <span class="info-label">Última Sincronização:</span>
+                                    <span class="info-value" id="last-sync">-</span>
                                 </div>
                                 <div class="info-item">
-                                    <span class="info-label">Total de registros:</span>
-                                    <span class="info-value" id="total-records">-</span>
+                                    <span class="info-label">Registros Locais:</span>
+                                    <span class="info-value" id="local-record-count">-</span>
                                 </div>
+                                <div class="info-item">
+                                    <span class="info-label">Última Tentativa de API:</span>
+                                    <span class="info-value" id="last-api-attempt">Nunca</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Operações Pendentes:</span>
+                                    <span class="info-value" id="pending-operations">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Debug Console -->
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>🐛 Console de Debug</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="debug-console" id="debug-console">
+                                <div class="debug-log">Aguardando logs...</div>
+                            </div>
+                            <div class="debug-actions">
+                                <button class="btn btn--sm btn--outline" id="clear-debug">
+                                    🗑️ Limpar Console
+                                </button>
+                                <button class="btn btn--sm btn--secondary" id="download-logs">
+                                    📥 Baixar Logs
+                                </button>
                             </div>
                         </div>
                     </div>
