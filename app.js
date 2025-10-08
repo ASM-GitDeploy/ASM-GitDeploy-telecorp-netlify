@@ -13,7 +13,7 @@ class TeleCorpApp {
         this.lastSync = null;
         this.pendingOperations = [];
         this.debugLogs = [];
-        
+       
         // Enhanced configuration
         this.config = {
             databaseUrl: "postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require",
@@ -158,7 +158,6 @@ class TeleCorpApp {
 
         this.init();
     }
-
     getApiBaseUrl() {
         // Dynamic API URL based on environment
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -235,8 +234,7 @@ class TeleCorpApp {
         if (mobileToggle && sidebar) {
             mobileToggle.addEventListener('click', () => {
                 sidebar.classList.toggle('open');
-            }
-         });
+            });
 
             document.addEventListener('click', (e) => {
                 if (window.innerWidth <= 768 && 
@@ -245,36 +243,36 @@ class TeleCorpApp {
                     sidebar.classList.contains('open')) {
                     sidebar.classList.remove('open');
                 }
-            });
-                
-            document.getElementById('init-database')?.addEventListener('click', async () => {
-          app.showLoading(true);
-          try {
-            const response = await fetch(`${app.config.apiBaseUrl}/init-database`, { method: 'POST' });
-            const result = await response.json();
-            if (result.success === true) {
-              app.showToast('Banco inicializado com sucesso!', 'success');
-            } else {
-              // Exibe o erro retornado pelo servidor, convertendo em string
-              app.showToast('Erro na inicialização: ' + JSON.stringify(result), 'error');
+            })
+        };    
+        document.getElementById('init-database')?.addEventListener('click', async () => {
+            app.showLoading(true);
+            try {
+             const response = await fetch(`${app.config.apiBaseUrl}/init-database`, { method: 'POST' });
+             const result = await response.json();
+             if (result.success === true) {
+               app.showToast('Banco inicializado com sucesso!', 'success');
+             } else {
+                // Exibe o erro retornado pelo servidor, convertendo em string
+                app.showToast('Erro na inicialização: ' + JSON.stringify(result), 'error');
+             }
+            } catch (error) {
+                  app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
+            } finally {
+                // Garantir que o overlay sempre desapareça
+                app.showLoading(false);
             }
-          } catch (error) {
-            app.showToast('Erro ao inicializar banco: ' + error.message, 'error');
-          } finally {
-            // Garantir que o overlay sempre desapareça
-            app.showLoading(false);
-          }
-          });
-                showLoading(show) {
-          const overlay = document.getElementById('loading-overlay');
-          if (!overlay) return;
-          if (show) {
-            overlay.classList.add('show');
-          } else {
-            overlay.classList.remove('show');
-          }
-                }
-        };  
+        });
+        showLoading(show); {
+         const overlay = document.getElementById('loading-overlay');
+            if (!overlay) return;
+            if (show) {
+             overlay.classList.add('show');
+            } else {
+              overlay.classList.remove('show');
+            }
+        }
+          
 
         // Navigation
         document.querySelectorAll('.menu-link').forEach(link => {
@@ -1402,8 +1400,8 @@ class TeleCorpApp {
             currency: 'BRL'
         }).format(value);
     }
- 
-
+} 
+  
 // Initialize the application
 let app;
 document.addEventListener('DOMContentLoaded', () => {
