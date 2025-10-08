@@ -4,7 +4,7 @@
   "description": "Dashboard de Linhas Telefônicas - Netlify Functions",
   "main": "index.html",
   "scripts": {
-    "build": "echo 'No build needed'",
+    "build": "echo 'Build completed'",
     "dev": "netlify dev",
     "deploy": "netlify deploy --prod"
   },
