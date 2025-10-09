@@ -341,7 +341,8 @@ class TeleCorpApp {
                 this.lastSync = new Date();
                 
                 // Try to load data from API
-                if (this.operationMode === 'online' || this.operationMode === 'fallback') {
+                // || this.operationMode === 'fallback'
+                if (this.operationMode === 'online') {
                     await this.loadDataFromAPI();
                 }
             } else {
@@ -351,7 +352,7 @@ class TeleCorpApp {
             this.debugLog('error', 'Falha na conexão', error.message);
             this.isOnline = false;
             
-            if (this.operationMode === 'fallback') {
+            if (this.operationMode === 'offline') {
                 this.updateConnectionStatus('disconnected');
                 this.debugLog('warn', 'Usando dados locais como fallback');
             } else {
