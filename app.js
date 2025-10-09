@@ -314,34 +314,53 @@ class TeleCorpApp {
     }
 
     async checkConnection() {
-    this.debugLog('info', 'Verificando conexão...');
-    try {
-        // EXECUTA APENAS CHECK, NÃO ALTERAR OPERATION MODE AQUI
-        const response = await this.retryOperation(
-            () => fetch(`${this.config.apiBaseUrl}/test`), 
-            this.retryAttempts
-        );
-        this.isOnline = response.ok;
-        this.updateConnectionStatus('connected');
-        this.debugLog('success', 'Conexão estabelecida com sucesso');
-        this.lastSync = new Date();
+        this.debugLog('info', 'Verificando conexão...');
         
--       // NÃO redefine para 'fallback' aqui!
--       this.operationMode = 'fallback';
+        try {
+            this.updateConnectionStatus('checking');
+            
+            if (this.operationMode === 'offline') {
+                this.isOnline = false;
+                this.updateConnectionStatus('offline');
+                this.debugLog('info', 'Modo offline ativo');
+                return;
+            }
 
--       if (this.operationMode === 'online') {
-+       if (this.operationMode === 'online') {
-            await this.loadDataFromAPI();
--       } else {
--           throw new Error('API response not ok');
+            const response = await this.retryOperation(() => 
+                fetch(this.config.apiBaseUrl + '/test', { 
+                    method: 'GET',
+                    timeout: 5000 
+                })
+            );
+            
+            this.isOnline = response && response.ok;
+            
+            if (this.isOnline) {
+                this.updateConnectionStatus('connected');
+                this.debugLog('success', 'Conexão estabelecida com sucesso');
+                this.lastSync = new Date();
+                
+                // Try to load data from API
+                if (this.operationMode === 'online' || this.operationMode === 'fallback') {
+                    await this.loadDataFromAPI();
+                }
+            } else {
+                throw new Error('API response not ok');
+            }
+        } catch (error) {
+            this.debugLog('error', 'Falha na conexão', error.message);
+            this.isOnline = false;
+            
+            if (this.operationMode === 'fallback') {
+                this.updateConnectionStatus('disconnected');
+                this.debugLog('warn', 'Usando dados locais como fallback');
+            } else {
+                this.updateConnectionStatus('disconnected');
+            }
         }
-    } catch (error) {
-        this.debugLog('error', 'Falha na conexão, erro:', error.message);
-        this.isOnline = false;
-        this.updateConnectionStatus('disconnected');
-        this.debugLog('warn', 'Usando dados locais como fallback');
+        
+        this.updateSystemDisplays();
     }
-}
 
     async retryOperation(operation, attempts = this.retryAttempts) {
         for (let i = 0; i < attempts; i++) {
