@@ -9,8 +9,7 @@ class TeleCorpApp {
 
   async init() {
     this.showLoading('Carregando dados...');
-    await this.loadDataFromAPI();
-    this.hideLoading();
+    this.loadDataFromAPI().finally(() => this.hideLoading());
     this.bindEvents();
     this.render();
   }
