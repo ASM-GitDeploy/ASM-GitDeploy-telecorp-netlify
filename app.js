@@ -403,17 +403,20 @@ class TeleCorpApp {
             if (response.ok) {
                 const apiData = await response.json();
                 
-                // CORREÇÃO: Verificar se é array direto ou objeto com propriedade linhas
+                // CORREÇÃO: Verificar todos os possíveis formatos de resposta
                 let linhasArray = [];
                 
                 if (Array.isArray(apiData)) {
-                    // API retorna array direto (seu caso atual)
+                    // API retorna array direto: [dados]
                     linhasArray = apiData;
+                } else if (apiData.data && Array.isArray(apiData.data)) {
+                    // API retorna objeto com propriedade 'data': {data: [dados]}
+                    linhasArray = apiData.data;
                 } else if (apiData.linhas && Array.isArray(apiData.linhas)) {
-                    // API retorna objeto com propriedade 'linhas'
+                    // API retorna objeto com propriedade 'linhas': {linhas: [dados]}
                     linhasArray = apiData.linhas;
                 } else {
-                    this.debugLog('warn', 'API retornou dados inválidos:', apiData);
+                    this.debugLog('warn', 'API retornou dados em formato não reconhecido:', apiData);
                     return false;
                 }
                 
