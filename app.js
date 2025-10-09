@@ -71,7 +71,7 @@ class TeleCorpApp {
                 "CC004-Logística", "CC005-Suporte"
             ],
             linhas: [
-                {}
+            
             ]
         };
 
@@ -93,13 +93,23 @@ class TeleCorpApp {
         this.debugLog('info', 'Iniciando aplicação TeleCorp...');
         this.bindEvents();
         this.populateDropdowns();
+        
+        // Primeiro, verificar conexão
         await this.checkConnection();
+        
+        // SE estiver online OU em modo fallback, carregar dados da API
+        if (this.isOnline && (this.operationMode === 'online' || this.operationMode === 'fallback')) {
+            this.debugLog('info', 'Carregando dados iniciais do banco...');
+            await this.loadDataFromAPI();
+        }
+        
+        // Agora sim, mostrar a página com os dados carregados
         this.showPage('dashboard');
         this.updateDashboard();
         this.renderLineTable();
         this.setupAutoRefresh();
         this.updateSystemInfo();
-        this.debugLog('success', 'Aplicação iniciada com sucesso');
+        this.debugLog('success', 'Aplicação iniciada com dados do banco');
     }
 
     debugLog(level, message, data = null) {
@@ -237,53 +247,47 @@ class TeleCorpApp {
     }
 
     async checkConnection() {
-        this.debugLog('info', 'Verificando conexão...');
-        
-        try {
-            this.updateConnectionStatus('checking');
-            
-            if (this.operationMode === 'offline') {
-                this.isOnline = false;
-                this.updateConnectionStatus('offline');
-                this.debugLog('info', 'Modo offline ativo');
-                return;
-            }
-
-            const response = await this.retryOperation(() => 
-                fetch(this.config.apiBaseUrl + '/test', { 
-                    method: 'GET',
-                    timeout: 5000 
-                })
-            );
-            
-            this.isOnline = response && response.ok;
-            
-            if (this.isOnline) {
-                this.updateConnectionStatus('connected');
-                this.debugLog('success', 'Conexão estabelecida com sucesso');
-                this.lastSync = new Date();
+            this.debugLog('info', 'Verificando conexão...');
+            try {
+                this.updateConnectionStatus('checking');
                 
-                // Try to load data from API
-                if (this.operationMode === 'online' || this.operationMode === 'fallback') {
-                    await this.loadDataFromAPI();
+                if (this.operationMode === 'offline') {
+                    this.isOnline = false;
+                    this.updateConnectionStatus('offline');
+                    this.debugLog('info', 'Modo offline ativo');
+                    return;
                 }
-            } else {
-                throw new Error('API response not ok');
-            }
-        } catch (error) {
-            this.debugLog('error', 'Falha na conexão', error.message);
-            this.isOnline = false;
-            
-            if (this.operationMode === 'fallback') {
-                this.updateConnectionStatus('disconnected');
-                this.debugLog('warn', 'Usando dados locais como fallback');
-            } else {
-                this.updateConnectionStatus('disconnected');
-            }
-        }
         
-        this.updateSystemDisplays();
-    }
+                const response = await this.retryOperation(() => 
+                    fetch(`${this.config.apiBaseUrl}/test`, {
+                        method: 'GET',
+                        timeout: 5000
+                    })
+                );
+        
+                this.isOnline = response && response.ok;
+        
+                if (this.isOnline) {
+                    this.updateConnectionStatus('connected');
+                    this.debugLog('success', 'Conexão estabelecida com sucesso');
+                    this.lastSync = new Date();
+                } else {
+                    throw new Error('API response not ok');
+                }
+            } catch (error) {
+                this.debugLog('error', 'Falha na conexão', error.message);
+                this.isOnline = false;
+                
+                if (this.operationMode === 'fallback') {
+                    this.updateConnectionStatus('disconnected');
+                    this.debugLog('warn', 'Usando dados locais como fallback');
+                } else {
+                    this.updateConnectionStatus('disconnected');
+                }
+            }
+            
+            this.updateSystemDisplays();
+        }
 
     async retryOperation(operation, attempts = this.retryAttempts) {
         for (let i = 0; i < attempts; i++) {
@@ -391,22 +395,42 @@ class TeleCorpApp {
     }
 
     async loadDataFromAPI() {
-        try {
-            this.debugLog('info', 'Carregando dados da API...');
-            
-            const response = await fetch(this.config.apiBaseUrl + '/linhas');
-            if (response.ok) {
-                const apiData = await response.json();
-                if (apiData.linhas && Array.isArray(apiData.linhas)) {
-                    this.data.linhas = apiData.linhas;
-                    this.filteredLines = [...this.data.linhas];
-                    this.debugLog('success', `${apiData.linhas.length} registros carregados da API`);
+            try {
+                this.debugLog('info', 'Carregando dados da API...');
+                this.showLoading('Carregando dados do banco...');
+                
+                const response = await fetch(`${this.config.apiBaseUrl}/linhas`);
+                
+                if (response.ok) {
+                    const apiData = await response.json();
+                    
+                    if (apiData.linhas && Array.isArray(apiData.linhas)) {
+                        // Limpar dados antigos e carregar do banco
+                        this.data.linhas = apiData.linhas;
+                        this.filteredLines = [...this.data.linhas];
+                        
+                        this.debugLog('success', `${apiData.linhas.length} registros carregados da API`);
+                        this.lastSync = new Date();
+                        return true;
+                    } else {
+                        this.debugLog('warn', 'API retornou dados inválidos');
+                        return false;
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
                 }
+            } catch (error) {
+                this.debugLog('error', 'Falha ao carregar dados da API', error.message);
+                
+                // Se estiver em modo fallback e não há dados, mostrar mensagem
+                if (this.operationMode === 'fallback' && this.data.linhas.length === 0) {
+                    this.showToast('Não foi possível carregar dados do banco. Verifique sua conexão.', 'warning');
+                }
+                return false;
+            } finally {
+                this.hideLoading();
             }
-        } catch (error) {
-            this.debugLog('warn', 'Falha ao carregar dados da API, usando dados locais');
         }
-    }
 
     async testConnectionComplete() {
         const resultsContainer = document.getElementById('connection-test-results');
