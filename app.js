@@ -3,7 +3,7 @@
 class TeleCorpApp {
     constructor() {
         this.currentPage = 'dashboard';
-        this.isOnline = false;
+        this.isOnline = true;
         this.operationMode = 'online'; // online, offline, fallback
         this.autoRefreshInterval = null;
         this.showNotifications = true;
