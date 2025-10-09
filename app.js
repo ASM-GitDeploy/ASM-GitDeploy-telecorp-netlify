@@ -170,7 +170,11 @@ class TeleCorpApp {
         this.debugLog('info', 'Iniciando aplicação TeleCorp...');
         this.bindEvents();
         this.populateDropdowns();
-        await this.checkConnection();
+        try {
+          await this.loadDataFromAPI();
+        } catch {
+          this.showToast('Falha ao carregar do banco, usando exemplo', 'warning');
+        }
         this.showPage('dashboard');
         this.updateDashboard();
         this.renderLineTable();
@@ -330,8 +334,6 @@ class TeleCorpApp {
         this.debugLog('success', 'Conexão estabelecida com sucesso');
         this.lastSync = new Date();
         
--       // NÃO redefine para 'fallback' aqui!
--       this.operationMode = 'fallback';
 
 -       if (this.operationMode === 'online') {
 +       if (this.operationMode === 'online') {
