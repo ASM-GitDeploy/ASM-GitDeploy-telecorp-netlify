@@ -94,16 +94,15 @@ class TeleCorpApp {
         this.bindEvents();
         this.populateDropdowns();
         
-        // Primeiro, verificar conexão
+        // Verificar conexão primeiro
         await this.checkConnection();
         
-        // SE estiver online OU em modo fallback, carregar dados da API
-        if (this.isOnline && (this.operationMode === 'online' || this.operationMode === 'fallback')) {
-            this.debugLog('info', 'Carregando dados iniciais do banco...');
+        // SE estiver online, carregar dados da API
+        if (this.isOnline) {
             await this.loadDataFromAPI();
         }
         
-        // Agora sim, mostrar a página com os dados carregados
+        // Mostrar página após carregar dados
         this.showPage('dashboard');
         this.updateDashboard();
         this.renderLineTable();
@@ -395,42 +394,56 @@ class TeleCorpApp {
     }
 
     async loadDataFromAPI() {
-            try {
-                this.debugLog('info', 'Carregando dados da API...');
-                this.showLoading('Carregando dados do banco...');
+        try {
+            this.debugLog('info', 'Carregando dados da API...');
+            this.showLoading('Carregando dados do banco...');
+            
+            const response = await fetch(`${this.config.apiBaseUrl}/linhas`);
+            
+            if (response.ok) {
+                const apiData = await response.json();
                 
-                const response = await fetch(`${this.config.apiBaseUrl}/linhas`);
+                // CORREÇÃO: Verificar se é array direto ou objeto com propriedade linhas
+                let linhasArray = [];
                 
-                if (response.ok) {
-                    const apiData = await response.json();
-                    
-                    if (apiData.linhas && Array.isArray(apiData.linhas)) {
-                        // Limpar dados antigos e carregar do banco
-                        this.data.linhas = apiData.linhas;
-                        this.filteredLines = [...this.data.linhas];
-                        
-                        this.debugLog('success', `${apiData.linhas.length} registros carregados da API`);
-                        this.lastSync = new Date();
-                        return true;
-                    } else {
-                        this.debugLog('warn', 'API retornou dados inválidos');
-                        return false;
-                    }
+                if (Array.isArray(apiData)) {
+                    // API retorna array direto (seu caso atual)
+                    linhasArray = apiData;
+                } else if (apiData.linhas && Array.isArray(apiData.linhas)) {
+                    // API retorna objeto com propriedade 'linhas'
+                    linhasArray = apiData.linhas;
                 } else {
-                    throw new Error(`HTTP ${response.status}`);
+                    this.debugLog('warn', 'API retornou dados inválidos:', apiData);
+                    return false;
                 }
-            } catch (error) {
-                this.debugLog('error', 'Falha ao carregar dados da API', error.message);
                 
-                // Se estiver em modo fallback e não há dados, mostrar mensagem
-                if (this.operationMode === 'fallback' && this.data.linhas.length === 0) {
-                    this.showToast('Não foi possível carregar dados do banco. Verifique sua conexão.', 'warning');
-                }
-                return false;
-            } finally {
-                this.hideLoading();
+                // Limpar dados antigos e carregar do banco
+                this.data.linhas = linhasArray;
+                this.filteredLines = [...this.data.linhas];
+                
+                this.debugLog('success', `${linhasArray.length} registros carregados da API`);
+                this.lastSync = new Date();
+                
+                // Atualizar interface após carregar dados
+                this.renderLineTable();
+                this.updateDashboard();
+                
+                return true;
+            } else {
+                throw new Error(`HTTP ${response.status}`);
             }
+        } catch (error) {
+            this.debugLog('error', 'Falha ao carregar dados da API', error.message);
+            
+            // Se estiver em modo fallback e não há dados, mostrar mensagem
+            if (this.operationMode === 'fallback' && this.data.linhas.length === 0) {
+                this.showToast('Não foi possível carregar dados do banco. Verifique sua conexão.', 'warning');
+            }
+            return false;
+        } finally {
+            this.hideLoading();
         }
+    }
 
     async testConnectionComplete() {
         const resultsContainer = document.getElementById('connection-test-results');
