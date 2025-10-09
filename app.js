@@ -1335,6 +1335,27 @@ let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new TeleCorpApp();
 });
+/**
+ * Formata o valor do input para (XX) XXXXX-XXXX
+ * @param {HTMLInputElement} input 
+ */
+function formatPhone(input) {
+  // Remove tudo que não for dígito
+  let digits = input.value.replace(/\D/g, '');
+
+  // Aplica máscara
+  if (digits.length > 2) {
+    // Coloca o DDD
+    digits = '(' + digits.slice(0, 2) + ') ' + digits.slice(2);
+  }
+  if (digits.length > 9) {
+    // Adiciona hífen após os 5 primeiros dígitos do número
+    digits = digits.slice(0, 9) + '-' + digits.slice(9, 13);
+  }
+
+  // Limita tamanho máximo de 15 caracteres: (XX) XXXXX-XXXX
+  input.value = digits.slice(0, 15);
+}
 
 // Handle window resize for charts
 window.addEventListener('resize', () => {
