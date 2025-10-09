@@ -8,6 +8,13 @@ const pool = new Pool({
         rejectUnauthorized: false
     }
 });
+if (path === '/test') {
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ message: 'OK' })
+  };
+}
 
 // Headers CORS para todas as respostas
 const headers = {
