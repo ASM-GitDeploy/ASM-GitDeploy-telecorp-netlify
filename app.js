@@ -317,9 +317,13 @@ class TeleCorpApp {
     this.debugLog('info', 'Verificando conexão...');
     try {
         // EXECUTA APENAS CHECK, NÃO ALTERAR OPERATION MODE AQUI
-        const response = await this.retryOperation(
-            () => fetch(`${this.config.apiBaseUrl}/test`), 
-            this.retryAttempts
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(`${baseUrl}/test`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        //const response = await this.retryOperation(
+           // () => fetch(`${this.config.apiBaseUrl}/test`), 
+           // this.retryAttempts
         );
         this.isOnline = response.ok;
         this.updateConnectionStatus('connected');
