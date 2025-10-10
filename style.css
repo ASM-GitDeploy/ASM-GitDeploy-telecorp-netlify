@@ -4,20 +4,21 @@
   --color-black: rgba(0, 0, 0, 1);
   --color-cream-50: rgba(252, 252, 249, 1);
   --color-cream-100: rgba(255, 255, 253, 1);
-  --color-gray-200: rgba(245, 245, 245, 1);
+  --color-gray-200: rgb(255, 255, 255);
   --color-gray-300: rgba(167, 169, 169, 1);
-  --color-gray-400: rgba(119, 124, 124, 1);
-  --color-slate-500: rgba(98, 108, 113, 1);
-  --color-brown-600: rgba(94, 82, 64, 1);
+  --color-gray-400: rgb(222, 235, 235);
+  --color-slate-500: rgb(216, 216, 216);
+  --color-brown-600: rgb(243, 243, 243);
   --color-charcoal-700: rgba(31, 33, 33, 1);
-  --color-charcoal-800: rgba(38, 40, 40, 1);
+  --color-charcoal-800: rgba(40, 69, 126, 0.449);
   --color-slate-900: rgba(19, 52, 59, 1);
-  --color-teal-300: rgba(50, 184, 198, 1);
+  --color-teal-300: rgb(86, 225, 240);
   --color-teal-400: rgba(45, 166, 178, 1);
   --color-teal-500: rgba(33, 128, 141, 1);
   --color-teal-600: rgba(29, 116, 128, 1);
   --color-teal-700: rgba(26, 104, 115, 1);
   --color-teal-800: rgba(41, 150, 161, 1);
+  --color-blue-800: rgb(2, 55, 107,1);
   --color-red-400: rgba(255, 84, 89, 1);
   --color-red-500: rgba(192, 21, 47, 1);
   --color-orange-400: rgba(230, 129, 97, 1);
@@ -166,8 +167,8 @@
     /* Semantic Color Tokens (Dark Mode) */
     --color-background: var(--color-charcoal-700);
     --color-surface: var(--color-charcoal-800);
-    --color-text: var(--color-gray-200);
-    --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+    --color-text:  rgb(255, 255, 255);
+    --color-text-secondary:  rgb(255, 255, 255);
     --color-primary: var(--color-teal-300);
     --color-primary-hover: var(--color-teal-400);
     --color-primary-active: var(--color-teal-800);
@@ -178,7 +179,7 @@
     --color-error: var(--color-red-400);
     --color-success: var(--color-teal-300);
     --color-warning: var(--color-orange-400);
-    --color-info: var(--color-gray-300);
+    --color-info: var(--color-teal-300);
     --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
     --color-btn-primary-text: var(--color-slate-900);
     --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
@@ -238,7 +239,7 @@
   --color-error: var(--color-red-400);
   --color-success: var(--color-teal-300);
   --color-warning: var(--color-orange-400);
-  --color-info: var(--color-gray-300);
+  --color-info: var(--color-teal-300);
   --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
   --color-btn-primary-text: var(--color-slate-900);
   --color-card-border: rgba(var(--color-gray-400-rgb), 0.15);
@@ -487,6 +488,11 @@ pre code {
 textarea.form-control {
   font-family: var(--font-family-base);
   font-size: var(--font-size-base);
+}
+input::placeholder,
+textarea::placeholder {
+  color: #ffffff; /* ex: cinza médio */
+  opacity: 1;     /* para garantir opacidade consistente */
 }
 
 select.form-control {
@@ -1003,14 +1009,14 @@ select.form-control {
 /* Sidebar */
 .sidebar {
   width: 260px;
-  background: var(--color-surface);
+  background: var(--color-blue-800);
   border-right: 1px solid var(--color-border);
   padding: var(--space-24);
   position: fixed;
   height: 100vh;
   overflow-y: auto;
   backdrop-filter: blur(10px);
-  background: rgba(var(--color-slate-900-rgb), 0.95);
+  background: rgba(4, 55, 107, 1);
   color: var(--color-gray-200);
   z-index: 1000;
   transition: transform var(--duration-normal) var(--ease-standard);
@@ -1022,16 +1028,27 @@ select.form-control {
   border-bottom: 1px solid rgba(var(--color-gray-400-rgb), 0.2);
 }
 
-.sidebar-header h2 {
-  color: var(--color-teal-300);
-  font-size: var(--font-size-3xl);
-  margin-bottom: var(--space-4);
+.logo {
+    /* Configura o H1 para ter um tamanho de fonte zero, escondendo o texto */
+    font-size: 0;
+    color: transparent;
+    /* Configura a largura e altura do elemento para o tamanho da imagem */
+    width: 210px; /* Ajuste conforme o tamanho da sua imagem */
+    height: 180px; /* Ajuste conforme o tamanho da sua imagem */
+    /* Adiciona a imagem como plano de fundo */
+    background-image: url(https://i.pinimg.com/236x/17/c7/96/17c796bc7d67fdd18e9ee571bb89ba5b.jpg);
+    /* Centraliza a imagem */
+    background-position: center;
+    /* Garante que a imagem não se repita */
+    background-repeat: no-repeat;
+    
 }
 
 .sidebar-header p {
-  color: var(--color-gray-300);
-  font-size: var(--font-size-sm);
+  color: var(--color-cream-50);
+  font-size: 20;
   margin: 0;
+  text-align:center;
 }
 
 .sidebar-menu {
@@ -1049,7 +1066,7 @@ select.form-control {
   align-items: center;
   padding: var(--space-12) var(--space-16);
   border-radius: var(--radius-base);
-  color: var(--color-gray-300);
+  color: rgb(250, 255, 255, 1);
   text-decoration: none;
   transition: all var(--duration-normal) var(--ease-standard);
   font-weight: var(--font-weight-medium);
@@ -1057,12 +1074,12 @@ select.form-control {
 
 .menu-link:hover {
   background: rgba(var(--color-teal-300-rgb), 0.1);
-  color: var(--color-teal-300);
+  color:  rgb(250, 255, 255, 1);
 }
 
 .menu-link.active {
-  background: rgba(var(--color-teal-300-rgb), 0.15);
-  color: var(--color-teal-300);
+  background: rgba(108, 171, 234, 0.50);
+  color: rgb(4, 55, 107);
 }
 
 .menu-link span {
@@ -1075,7 +1092,7 @@ select.form-control {
   flex: 1;
   margin-left: 260px;
   padding: var(--space-24);
-  background: linear-gradient(135deg, var(--color-bg-1), var(--color-bg-3));
+  background: linear-gradient(100deg, rgba(2, 27, 51, 0.866), rgb(5, 77, 148));
   min-height: 100vh;
 }
 
@@ -1243,7 +1260,7 @@ select.form-control {
 .entity-stat {
   text-align: center;
   padding: var(--space-8);
-  background: var(--color-bg-2);
+  background:  rgba(83, 113, 197, 0.15);
   border-radius: var(--radius-sm);
 }
 
