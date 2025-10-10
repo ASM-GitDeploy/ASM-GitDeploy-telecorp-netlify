@@ -1,1419 +1,501 @@
-// TeleCorp - Enhanced Telephone Line Management Application with Connection Fixes
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleCorp - Gerenciamento de Linhas Telefônicas</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    <div id="loader" class="hidden">Carregando...</div>
+    <div class="app">
+        <!-- Mobile Menu Toggle -->
+        <button class="mobile-menu-toggle" id="mobile-menu-toggle">☰</button>
 
-class TeleCorpApp {
-    constructor() {
-        this.currentPage = 'dashboard';
-        this.isOnline = true;
-        this.operationMode = 'online'; // online, offline, fallback
-        this.autoRefreshInterval = null;
-        this.showNotifications = true;
-        this.enableDebug = true;
-        this.retryAttempts = 3;
-        this.retryDelay = 2000;
-        this.lastSync = null;
-        this.pendingOperations = [];
-        this.debugLogs = [];
-       
-        // Enhanced configuration
-        this.config = {
-            databaseUrl: "postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require",
-            apiBaseUrl: this.getApiBaseUrl(),
-            enableLogs: true,
-            retryAttempts: 3,
-            retryDelay: 2000,
-            fallbackMode: true,
-            autoRefresh: 30
-        };
-        
-        // Fallback data structure with enhanced data
-        this.data = {
-            entidades: [
-                {
-                    nome: "145111",
-                    totalLinhas: 45,
-                    linhasAtivas: 42,
-                    linhasInativas: 3,
-                    custoMensal: 4250.80,
-                    cor: "#3B82F6"
-                },
-                {
-                    nome: "145112", 
-                    totalLinhas: 28,
-                    linhasAtivas: 25,
-                    linhasInativas: 3,
-                    custoMensal: 2890.50,
-                    cor: "#10B981"
-                },
-                {
-                    nome: "145121",
-                    totalLinhas: 32,
-                    linhasAtivas: 30,
-                    linhasInativas: 2,
-                    custoMensal: 3120.75,
-                    cor: "#F59E0B"
-                },
-                {
-                    nome: "145122",
-                    totalLinhas: 18,
-                    linhasAtivas: 16,
-                    linhasInativas: 2,
-                    custoMensal: 1650.25,
-                    cor: "#8B5CF6"
-                }
-            ],
-            planos: [
-                "Básico", "Básico Plus", "Empresarial", "Empresarial Pro",
-                "Digital Basic", "Digital Pro", "Corporativo", "Corporativo Max",
-                "Executivo", "Premium", "Premium Plus"
-            ],
-            centrosCusto: [
-                "CC001-Administração", "CC002-Vendas", "CC003-Operação",
-                "CC004-Logística", "CC005-Suporte"
-            ],
-            linhas: [
-            
-            ]
-        };
-
-        this.filteredLines = [...this.data.linhas];
-        this.editingLine = null;
-        this.charts = {};
-
-        this.init();
-    }
-    getApiBaseUrl() {
-        // Dynamic API URL based on environment
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return 'http://localhost:8888/.netlify/functions/api';
-        }
-        return '/.netlify/functions/api';
-    }
-
-    async init() {
-        this.debugLog('info', 'Iniciando aplicação TeleCorp...');
-        this.bindEvents();
-        this.populateDropdowns();
-        
-        // Verificar conexão primeiro
-        await this.checkConnection();
-        
-        // SE estiver online, carregar dados da API
-        if (this.isOnline) {
-            await this.loadDataFromAPI();
-        }
-        
-        // Mostrar página após carregar dados
-        this.showPage('dashboard');
-        this.updateDashboard();
-        this.renderLineTable();
-        this.setupAutoRefresh();
-        this.updateSystemInfo();
-        this.debugLog('success', 'Aplicação iniciada com dados do banco');
-    }
-
-    debugLog(level, message, data = null) {
-        if (!this.enableDebug) return;
-        
-        const timestamp = new Date().toLocaleTimeString('pt-BR');
-        const logEntry = {
-            timestamp,
-            level,
-            message,
-            data
-        };
-        
-        this.debugLogs.push(logEntry);
-        
-        // Keep only last 100 logs
-        if (this.debugLogs.length > 100) {
-            this.debugLogs = this.debugLogs.slice(-100);
-        }
-        
-        // Update debug console
-        this.updateDebugConsole();
-        
-        // Console log for debugging
-        const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
-        if (data) {
-            console.log(prefix, message, data);
-        } else {
-            console.log(prefix, message);
-        }
-    }
-
-    updateDebugConsole() {
-        const debugConsole = document.querySelector('.debug-log');
-        if (!debugConsole) return;
-        
-        const logHTML = this.debugLogs.map(log => `
-            <div class="debug-entry">
-                <span class="debug-timestamp">${log.timestamp}</span>
-                <span class="debug-level-${log.level}">[${log.level.toUpperCase()}]</span>
-                ${log.message}
-                ${log.data ? `\n${JSON.stringify(log.data, null, 2)}` : ''}
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2 class="logo">IASD</h2>
+                <p>Gerenciamento de Linhas</p>
             </div>
-        `).join('');
-        
-        debugConsole.innerHTML = logHTML || 'Aguardando logs...';
-        debugConsole.scrollTop = debugConsole.scrollHeight;
-    }
+            <ul class="sidebar-menu">
+                <li><a href="#" data-page="dashboard" class="menu-link active">
+                    <span>📊</span> Dashboard
+                </a></li>
+                <li><a href="#" data-page="management" class="menu-link">
+                    <span>📞</span> Gerenciamento
+                </a></li>
+                <li><a href="#" data-page="reports" class="menu-link">
+                    <span>📋</span> Relatórios
+                </a></li>
+                <li><a href="#" data-page="settings" class="menu-link">
+                    <span>⚙️</span> Configurações
+                </a></li>
+            </ul>
+        </nav>
 
-    bindEvents() {
-        // Mobile menu toggle
-        const mobileToggle = document.getElementById('mobile-menu-toggle');
-        const sidebar = document.getElementById('sidebar');
-        
-        if (mobileToggle && sidebar) {
-            mobileToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-            });
-
-            };    
-                
-
-        // Navigation
-        document.querySelectorAll('.menu-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const page = e.target.closest('.menu-link').dataset.page;
-                this.showPage(page);
-                
-                if (window.innerWidth <= 768) {
-                    sidebar?.classList.remove('open');
-                }
-            });
-        });
-
-        // Connection and management
-        document.getElementById('force-reconnect-btn')?.addEventListener('click', () => this.forceReconnect());
-        document.getElementById('add-line-btn')?.addEventListener('click', () => this.openLineModal());
-        document.getElementById('refresh-lines-btn')?.addEventListener('click', () => this.refreshData());
-        document.getElementById('close-modal')?.addEventListener('click', () => this.closeLineModal());
-        document.getElementById('cancel-btn')?.addEventListener('click', () => this.closeLineModal());
-        document.getElementById('line-form')?.addEventListener('submit', (e) => this.handleLineForm(e));
-
-        // Filters
-        document.getElementById('search-input')?.addEventListener('input', () => this.applyFilters());
-        document.getElementById('entity-filter')?.addEventListener('change', () => this.applyFilters());
-        document.getElementById('plan-filter')?.addEventListener('change', () => this.applyFilters());
-        document.getElementById('status-filter')?.addEventListener('change', () => this.applyFilters());
-
-        // Reports
-        document.getElementById('export-pdf-btn')?.addEventListener('click', () => this.exportPDF());
-        document.getElementById('export-excel-btn')?.addEventListener('click', () => this.exportExcel());
-        
-        // Report filters
-        document.getElementById('report-entity-filter')?.addEventListener('change', () => this.updateReportPreview());
-        document.getElementById('report-status-filter')?.addEventListener('change', () => this.updateReportPreview());
-        document.getElementById('report-min-value')?.addEventListener('input', () => this.updateReportPreview());
-        document.getElementById('report-max-value')?.addEventListener('input', () => this.updateReportPreview());
-
-        // Settings
-        document.getElementById('test-connection-btn')?.addEventListener('click', () => this.testConnectionComplete());
-        document.getElementById('db-config-form')?.addEventListener('submit', (e) => this.saveConfig(e));
-        document.getElementById('reset-config-btn')?.addEventListener('click', () => this.resetConfig());
-        document.getElementById('operation-mode')?.addEventListener('change', (e) => {
-            this.operationMode = e.target.value;
-            this.debugLog('info', `Modo de operação alterado para: ${this.operationMode}`);
-            this.updateConnectionStatus();
-        });
-        document.getElementById('auto-refresh')?.addEventListener('change', (e) => {
-            this.setupAutoRefresh(parseInt(e.target.value));
-        });
-        document.getElementById('retry-attempts')?.addEventListener('change', (e) => {
-            this.retryAttempts = parseInt(e.target.value);
-        });
-        document.getElementById('retry-delay')?.addEventListener('change', (e) => {
-            this.retryDelay = parseInt(e.target.value) * 1000;
-        });
-        document.getElementById('enable-debug')?.addEventListener('change', (e) => {
-            this.enableDebug = e.target.checked;
-            this.debugLog('info', `Debug mode: ${this.enableDebug ? 'ativado' : 'desativado'}`);
-        });
-        document.getElementById('show-notifications')?.addEventListener('change', (e) => {
-            this.showNotifications = e.target.checked;
-        });
-
-        // Debug console actions
-        document.getElementById('clear-debug')?.addEventListener('click', () => {
-            this.debugLogs = [];
-            this.updateDebugConsole();
-        });
-        document.getElementById('download-logs')?.addEventListener('click', () => this.downloadLogs());
-
-        // Modal backdrop click
-        document.querySelector('.modal-backdrop')?.addEventListener('click', () => this.closeLineModal());
-    }
-
-    async checkConnection() {
-            this.debugLog('info', 'Verificando conexão...');
-            try {
-                this.updateConnectionStatus('checking');
-                
-                if (this.operationMode === 'offline') {
-                    this.isOnline = false;
-                    this.updateConnectionStatus('offline');
-                    this.debugLog('info', 'Modo offline ativo');
-                    return;
-                }
-        
-                const response = await this.retryOperation(() => 
-                    fetch(`${this.config.apiBaseUrl}/test`, {
-                        method: 'GET',
-                        timeout: 5000
-                    })
-                );
-        
-                this.isOnline = response && response.ok;
-        
-                if (this.isOnline) {
-                    this.updateConnectionStatus('connected');
-                    this.debugLog('success', 'Conexão estabelecida com sucesso');
-                    this.lastSync = new Date();
-                } else {
-                    throw new Error('API response not ok');
-                }
-            } catch (error) {
-                this.debugLog('error', 'Falha na conexão', error.message);
-                this.isOnline = false;
-                
-                if (this.operationMode === 'fallback') {
-                    this.updateConnectionStatus('disconnected');
-                    this.debugLog('warn', 'Usando dados locais como fallback');
-                } else {
-                    this.updateConnectionStatus('disconnected');
-                }
-            }
-            
-            this.updateSystemDisplays();
-        }
-
-    async retryOperation(operation, attempts = this.retryAttempts) {
-        for (let i = 0; i < attempts; i++) {
-            try {
-                this.debugLog('info', `Tentativa ${i + 1} de ${attempts}`);
-                const result = await operation();
-                return result;
-            } catch (error) {
-                this.debugLog('warn', `Tentativa ${i + 1} falhou: ${error.message}`);
-                
-                if (i === attempts - 1) {
-                    throw error;
-                }
-                
-                // Exponential backoff
-                const delay = this.retryDelay * Math.pow(2, i);
-                this.debugLog('info', `Aguardando ${delay}ms antes da próxima tentativa`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
-    }
-
-    async forceReconnect() {
-        this.debugLog('info', 'Forçando reconexão...');
-        this.showLoading('Reconnectando...');
-        
-        try {
-            await this.checkConnection();
-            this.showToast('Reconexão realizada!', 'success');
-        } catch (error) {
-            this.showToast('Falha na reconexão', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    updateConnectionStatus(status = null) {
-        const indicator = document.getElementById('status-indicator');
-        const text = document.getElementById('status-text');
-        const subtitle = document.getElementById('status-subtitle');
-        const detailedStatus = document.getElementById('detailed-connection-status');
-        const operationModeDisplay = document.getElementById('operation-mode-display');
-        
-        if (!indicator || !text) return;
-
-        if (status === null) {
-            status = this.operationMode === 'offline' ? 'offline' : 
-                     this.isOnline ? 'connected' : 'disconnected';
-        }
-
-        indicator.className = 'status-indicator ' + status;
-        
-        const statusTexts = {
-            checking: 'Verificando...',
-            connected: 'Conectado',
-            disconnected: 'Desconectado',
-            offline: 'Modo Offline'
-        };
-        
-        const statusSubtitles = {
-            checking: 'Testando API...',
-            connected: 'API respondendo',
-            disconnected: 'API não disponível',
-            offline: 'Dados locais'
-        };
-        
-        text.textContent = statusTexts[status] || 'Desconhecido';
-        if (subtitle) subtitle.textContent = statusSubtitles[status] || '';
-        
-        if (detailedStatus) {
-            detailedStatus.className = 'info-value status-indicator-text ' + status;
-            detailedStatus.textContent = statusTexts[status] || 'Desconhecido';
-        }
-        
-        if (operationModeDisplay) {
-            const modeTexts = {
-                online: 'Online',
-                offline: 'Offline',
-                fallback: 'Fallback Automático'
-            };
-            operationModeDisplay.textContent = modeTexts[this.operationMode] || this.operationMode;
-        }
-    }
-
-    updateSystemDisplays() {
-        // Update record counts
-        const localRecords = document.getElementById('local-records');
-        const remoteRecords = document.getElementById('remote-records');
-        const lastSyncDisplay = document.getElementById('last-sync-display');
-        const lastSync = document.getElementById('last-sync');
-        const pendingOps = document.getElementById('pending-operations');
-        const lastApiAttempt = document.getElementById('last-api-attempt');
-        const localRecordCount = document.getElementById('local-record-count');
-        
-        if (localRecords) localRecords.textContent = this.data.linhas.length;
-        if (remoteRecords) remoteRecords.textContent = this.isOnline ? this.data.linhas.length : '-';
-        
-        const syncText = this.lastSync ? this.lastSync.toLocaleString('pt-BR') : 'Nunca';
-        if (lastSyncDisplay) lastSyncDisplay.textContent = syncText;
-        if (lastSync) lastSync.textContent = syncText;
-        
-        if (pendingOps) pendingOps.textContent = this.pendingOperations.length;
-        if (lastApiAttempt) lastApiAttempt.textContent = new Date().toLocaleString('pt-BR');
-        if (localRecordCount) localRecordCount.textContent = this.data.linhas.length;
-    }
-
-    async loadDataFromAPI() {
-        try {
-            this.debugLog('info', 'Carregando dados da API...');
-            this.showLoading('Carregando dados do banco...');
-            
-            const response = await fetch(`${this.config.apiBaseUrl}/linhas`);
-            
-            if (response.ok) {
-                const apiData = await response.json();
-                
-                // CORREÇÃO: Verificar todos os possíveis formatos de resposta
-                let linhasArray = [];
-                
-                if (Array.isArray(apiData)) {
-                    // API retorna array direto: [dados]
-                    linhasArray = apiData;
-                } else if (apiData.data && Array.isArray(apiData.data)) {
-                    // API retorna objeto com propriedade 'data': {data: [dados]}
-                    linhasArray = apiData.data;
-                } else if (apiData.linhas && Array.isArray(apiData.linhas)) {
-                    // API retorna objeto com propriedade 'linhas': {linhas: [dados]}
-                    linhasArray = apiData.linhas;
-                } else {
-                    this.debugLog('warn', 'API retornou dados em formato não reconhecido:', apiData);
-                    return false;
-                }
-                
-                // Limpar dados antigos e carregar do banco
-                this.data.linhas = linhasArray;
-                this.filteredLines = [...this.data.linhas];
-                
-                this.debugLog('success', `${linhasArray.length} registros carregados da API`);
-                this.lastSync = new Date();
-                
-                // Atualizar interface após carregar dados
-                this.renderLineTable();
-                this.updateDashboard();
-                
-                return true;
-            } else {
-                throw new Error(`HTTP ${response.status}`);
-            }
-        } catch (error) {
-            this.debugLog('error', 'Falha ao carregar dados da API', error.message);
-            
-            // Se estiver em modo fallback e não há dados, mostrar mensagem
-            if (this.operationMode === 'fallback' && this.data.linhas.length === 0) {
-                this.showToast('Não foi possível carregar dados do banco. Verifique sua conexão.', 'warning');
-            }
-            return false;
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    async testConnectionComplete() {
-        const resultsContainer = document.getElementById('connection-test-results');
-        if (!resultsContainer) return;
-        
-        resultsContainer.classList.add('show');
-        resultsContainer.innerHTML = '';
-        
-        const tests = [
-            {
-                name: 'Conectividade de Rede',
-                test: () => fetch('https://httpbin.org/get', { method: 'GET', timeout: 5000 })
-            },
-            {
-                name: 'Endpoint da API',
-                test: () => fetch(this.config.apiBaseUrl + '/test', { method: 'GET', timeout: 5000 })
-            },
-            {
-                name: 'Query no Banco',
-                test: () => fetch(this.config.apiBaseUrl + '/linhas', { method: 'GET', timeout: 10000 })
-            }
-        ];
-        
-        this.debugLog('info', 'Iniciando teste completo de conexão...');
-        
-        for (const testItem of tests) {
-            const stepElement = document.createElement('div');
-            stepElement.className = 'test-step testing';
-            stepElement.innerHTML = `
-                <div class="test-step-icon">⏳</div>
-                <div>${testItem.name}: Testando...</div>
-            `;
-            resultsContainer.appendChild(stepElement);
-            
-            try {
-                const response = await testItem.test();
-                if (response.ok) {
-                    stepElement.className = 'test-step success';
-                    stepElement.innerHTML = `
-                        <div class="test-step-icon">✅</div>
-                        <div>${testItem.name}: Sucesso (${response.status})</div>
-                    `;
-                    this.debugLog('success', `Teste ${testItem.name}: Sucesso`);
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-            } catch (error) {
-                stepElement.className = 'test-step error';
-                stepElement.innerHTML = `
-                    <div class="test-step-icon">❌</div>
-                    <div>${testItem.name}: Falha (${error.message})</div>
-                `;
-                this.debugLog('error', `Teste ${testItem.name}: Falha`, error.message);
-            }
-            
-            // Small delay between tests
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        
-        // Update connection status after complete test
-        await this.checkConnection();
-    }
-
-    showPage(pageId) {
-        // Update active menu item
-        document.querySelectorAll('.menu-link').forEach(link => {
-            link.classList.toggle('active', link.dataset.page === pageId);
-        });
-
-        // Show/hide pages
-        document.querySelectorAll('.page').forEach(page => {
-            page.classList.toggle('hidden', !page.id.includes(pageId));
-        });
-
-        this.currentPage = pageId;
-
-        // Initialize page-specific content
-        if (pageId === 'dashboard') {
-            this.updateDashboard();
-        } else if (pageId === 'management') {
-            this.renderLineTable();
-        } else if (pageId === 'reports') {
-            this.updateReportPreview();
-        } else if (pageId === 'settings') {
-            this.loadSettings();
-        }
-    }
-
-    populateDropdowns() {
-        // Entity dropdowns
-        const entitySelects = [
-            'entity-filter', 'report-entity-filter', 'entidade'
-        ];
-
-        entitySelects.forEach(selectId => {
-            const select = document.getElementById(selectId);
-            if (select && select.children.length <= 1) {
-                this.data.entidades.forEach(entidade => {
-                    const option = document.createElement('option');
-                    option.value = entidade.nome;
-                    option.textContent = entidade.nome;
-                    select.appendChild(option);
-                });
-            }
-        });
-
-        // Plan dropdowns
-        const planSelects = ['plan-filter', 'plano'];
-        planSelects.forEach(selectId => {
-            const select = document.getElementById(selectId);
-            if (select && select.children.length <= 1) {
-                this.data.planos.forEach(plano => {
-                    const option = document.createElement('option');
-                    option.value = plano;
-                    option.textContent = plano;
-                    select.appendChild(option);
-                });
-            }
-        });
-
-        // Centro de custo dropdown
-        const centroCustoSelect = document.getElementById('centrocusto');
-        if (centroCustoSelect && centroCustoSelect.children.length <= 1) {
-            this.data.centrosCusto.forEach(centro => {
-                const option = document.createElement('option');
-                option.value = centro;
-                option.textContent = centro;
-                centroCustoSelect.appendChild(option);
-            });
-        }
-    }
-
-    updateDashboard() {
-        // Recalculate entity statistics based on current lines
-        this.recalculateEntityStatistics();
-        
-        // Calculate overall statistics
-        const stats = this.calculateStatistics();
-        
-        // Update stat cards
-        document.getElementById('total-lines').textContent = stats.totalLinhas;
-        document.getElementById('active-lines').textContent = stats.linhasAtivas;
-        document.getElementById('total-cost').textContent = this.formatCurrency(stats.custoTotal);
-        document.getElementById('total-entities').textContent = this.data.entidades.length;
-
-        // Render entity cards
-        this.renderEntityCards();
-
-        // Create charts
-        setTimeout(() => {
-            this.createCharts();
-        }, 100);
-    }
-
-    recalculateEntityStatistics() {
-        this.data.entidades.forEach(entidade => {
-            const linhasEntidade = this.data.linhas.filter(linha => linha.entidade === entidade.nome);
-            entidade.totalLinhas = linhasEntidade.length;
-            entidade.linhasAtivas = linhasEntidade.filter(linha => linha.status === 'ativa').length;
-            entidade.linhasInativas = entidade.totalLinhas - entidade.linhasAtivas;
-            entidade.custoMensal = linhasEntidade.reduce((total, linha) => total + linha.valor, 0);
-        });
-    }
-
-    calculateStatistics() {
-        const totalLinhas = this.data.linhas.length;
-        const linhasAtivas = this.data.linhas.filter(linha => linha.status === 'ativa').length;
-        const custoTotal = this.data.linhas.reduce((total, linha) => total + linha.valor, 0);
-
-        return {
-            totalLinhas,
-            linhasAtivas,
-            linhasInativas: totalLinhas - linhasAtivas,
-            custoTotal
-        };
-    }
-
-    renderEntityCards() {
-        const container = document.getElementById('entity-cards');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        this.data.entidades.forEach(entidade => {
-            const card = document.createElement('div');
-            card.className = 'entity-card';
-            card.style.setProperty('--entity-color', entidade.cor);
-
-            card.innerHTML = `
-                <div class="entity-header">
-                    <div class="entity-name">${entidade.nome}</div>
-                    <div class="entity-cost">${this.formatCurrency(entidade.custoMensal)}</div>
-                </div>
-                <div class="entity-stats">
-                    <div class="entity-stat">
-                        <div class="entity-stat-value">${entidade.totalLinhas}</div>
-                        <div class="entity-stat-label">Total</div>
-                    </div>
-                    <div class="entity-stat">
-                        <div class="entity-stat-value">${entidade.linhasAtivas}</div>
-                        <div class="entity-stat-label">Ativas</div>
-                    </div>
-                    <div class="entity-stat">
-                        <div class="entity-stat-value">${entidade.linhasInativas}</div>
-                        <div class="entity-stat-label">Inativas</div>
-                    </div>
-                </div>
-            `;
-
-            container.appendChild(card);
-        });
-    }
-
-    createCharts() {
-        // Destroy existing charts
-        Object.values(this.charts).forEach(chart => {
-            if (chart) chart.destroy();
-        });
-
-        // Entity distribution chart
-        const distCtx = document.getElementById('entity-chart');
-            if (distCtx) {
-                // Dados de distribuição
-                const labels = this.data.entidades.map(e => e.nome);
-                const values = this.data.entidades.map(e => e.totalLinhas);
-                const colors = this.data.entidades.map(e => `#${e.cor}`); // usa cor da entidade
-
-                this.charts.distribution = new Chart(distCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: colors,
-                            hoverOffset: 30,
-                            cutout: '60%',        // tamanho do “buraco” interno
-                            borderWidth: 2,
-                            borderColor: '#1F2937'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            tooltip: {
-                                callbacks: {
-                                    label: ctx => {
-                                        const count = ctx.parsed;
-                                        return `${ctx.label}: ${count} linha${count>1?'s':''}`;
-                                    }
-                                },
-                                backgroundColor: '#111827',
-                                titleColor: '#F9FAFB',
-                                bodyColor: '#F9FAFB',
-                                borderColor: '#374151',
-                                borderWidth: 1
-                            },
-                            legend: {
-                                position: 'right',
-                                labels: {
-                                    color: '#F9FAFB',
-                                    boxWidth: 14,
-                                    padding: 12
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Distribuição de Linhas por Entidade',
-                                color: '#F9FAFB',
-                                font: { size: 18, weight: '500' },
-                                padding: { bottom: 16 }
-                            }
-                        }
-                    }
-                });
-            }
-
-        // Cost distribution chart
-        const costCtx = document.getElementById('cost-chart');
-            if (costCtx) {
-                // Dados
-                const labels = this.data.entidades.map(e => e.nome);
-                const data = this.data.entidades.map(e => e.custoMensal);
-                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
-
-                this.charts.cost = new Chart(costCtx, {
-                    type: 'pie',
-                    data: {
-                        labels,
-                        datasets: [{
-                            data,
-                            backgroundColor: colors,
-                            hoverOffset: 20,       // "explode" slice on hover
-                            borderWidth: 2,
-                            borderColor: '#1F2937'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            tooltip: {
-                                callbacks: {
-                                    label: ctx => {
-                                        const valor = ctx.parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                                        return `${ctx.label}: ${valor}`;
-                                    }
-                                },
-                                backgroundColor: '#111827',
-                                titleColor: '#F9FAFB',
-                                bodyColor: '#F9FAFB',
-                                borderColor: '#374151',
-                                borderWidth: 1
-                            },
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    color: '#F9FAFB',
-                                    boxWidth: 12,
-                                    padding: 16
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Distribuição de Custos por Entidade',
-                                color: '#F9FAFB',
-                                font: { size: 18, weight: '500' },
-                                padding: { bottom: 16 }
-                            }
-                        }
-                    }
-                });
-            }
-    }
-
-    renderLineTable() {
-        const tbody = document.getElementById('lines-table-body');
-        const filteredCount = document.getElementById('filtered-count');
-        const totalCount = document.getElementById('total-count');
-        
-        if (!tbody) return;
-
-        tbody.innerHTML = '';
-
-        if (filteredCount) filteredCount.textContent = this.filteredLines.length;
-        if (totalCount) totalCount.textContent = this.data.linhas.length;
-
-        this.filteredLines.forEach(linha => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${linha.titular}</td>
-                <td>${linha.numerocelular}</td>
-                <td>${linha.plano}</td>
-                <td>${this.formatCurrency(linha.valor)}</td>
-                <td>${linha.centrocusto}</td>
-                <td>${linha.entidade}</td>
-                <td>
-                    <span class="status-badge status-badge--${linha.status === 'ativa' ? 'active' : 'inactive'}">
-                        ${linha.status}
-                    </span>
-                </td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="action-btn action-btn--edit" onclick="app.editLine(${linha.id})">
-                            ✏️ Editar
-                        </button>
-                        <button class="action-btn action-btn--delete" onclick="app.deleteLine(${linha.id})">
-                            🗑️ Excluir
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div class="page" id="dashboard-page">
+                <header class="page-header">
+                    <h1>Dashboard</h1>
+                    <div class="header-actions">
+                        <div class="connection-status" id="connection-status">
+                            <span class="status-indicator" id="status-indicator"></span>
+                            <div class="status-details">
+                                <span id="status-text">Verificando conexão...</span>
+                                <small id="status-subtitle">Carregando...</small>
+                            </div>
+                        </div>
+                        <button class="btn btn--outline btn--sm" id="force-reconnect-btn">
+                            🔄 Reconectar
                         </button>
                     </div>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
+                </header>
 
-    applyFilters() {
-        const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
-        const entityFilter = document.getElementById('entity-filter')?.value || '';
-        const planFilter = document.getElementById('plan-filter')?.value || '';
-        const statusFilter = document.getElementById('status-filter')?.value || '';
-
-        this.filteredLines = this.data.linhas.filter(linha => {
-            const matchesSearch = !searchTerm || 
-                linha.titular.toLowerCase().includes(searchTerm) ||
-                linha.numerocelular.toLowerCase().includes(searchTerm) ||
-                linha.plano.toLowerCase().includes(searchTerm) ||
-                linha.responsavel.toLowerCase().includes(searchTerm);
-            
-            const matchesEntity = !entityFilter || linha.entidade === entityFilter;
-            const matchesPlan = !planFilter || linha.plano === planFilter;
-            const matchesStatus = !statusFilter || linha.status === statusFilter;
-
-            return matchesSearch && matchesEntity && matchesPlan && matchesStatus;
-        });
-
-        this.renderLineTable();
-    }
-
-    openLineModal(line = null) {
-        this.editingLine = line;
-        const modal = document.getElementById('line-modal');
-        const form = document.getElementById('line-form');
-        const title = document.getElementById('modal-title');
-        const saveBtn = document.getElementById('save-btn-text');
-
-        if (!modal || !form || !title) return;
-
-        title.textContent = line ? 'Editar Linha' : 'Adicionar Linha';
-        if (saveBtn) saveBtn.textContent = line ? 'Atualizar' : 'Salvar';
-
-        if (line) {
-            Object.keys(line).forEach(key => {
-                const input = document.getElementById(key);
-                if (input) {
-                    input.value = line[key];
-                }
-            });
-        } else {
-            form.reset();
-        }
-
-        modal.classList.remove('hidden');
-    }
-
-    closeLineModal() {
-        const modal = document.getElementById('line-modal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-        this.editingLine = null;
-    }
-
-    async handleLineForm(e) {
-        e.preventDefault();
-        const saveBtn = document.getElementById('save-btn');
-        const originalText = saveBtn?.textContent || 'Salvar';
-        
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Salvando...';
-        }
-
-        try {
-            const formData = new FormData(e.target);
-            const lineData = {};
-
-            const fields = ['titular', 'numerocelular', 'valor', 'plano', 'responsavel', 
-                           'codigoresponsavel', 'contacontabil', 'centrocusto', 'entidade', 'status'];
-            
-            fields.forEach(field => {
-                const input = document.getElementById(field);
-                if (input) {
-                    lineData[field] = input.value;
-                }
-            });
-
-            lineData.valor = parseFloat(lineData.valor);
-
-            if (this.editingLine) {
-                lineData.id = this.editingLine.id;
-                const index = this.data.linhas.findIndex(l => l.id === this.editingLine.id);
-                if (index !== -1) {
-                    this.data.linhas[index] = { ...this.data.linhas[index], ...lineData };
-                }
-                
-                if (this.isOnline && this.operationMode !== 'offline') {
-                    await this.updateLineAPI(lineData);
-                } else {
-                    this.queueOperation('update', lineData);
-                }
-                
-                this.showToast('Linha atualizada com sucesso!', 'success');
-                this.debugLog('success', 'Linha atualizada', lineData);
-            } else {
-                lineData.id = Math.max(...this.data.linhas.map(l => l.id), 0) + 1;
-                this.data.linhas.push(lineData);
-                
-                if (this.isOnline && this.operationMode !== 'offline') {
-                    await this.addLineAPI(lineData);
-                } else {
-                    this.queueOperation('create', lineData);
-                }
-                
-                this.showToast('Linha adicionada com sucesso!', 'success');
-                this.debugLog('success', 'Nova linha adicionada', lineData);
-            }
-
-            this.closeLineModal();
-            this.applyFilters();
-            this.updateDashboard();
-            this.updateSystemDisplays();
-        } catch (error) {
-            this.debugLog('error', 'Erro ao salvar linha', error.message);
-            this.showToast('Erro ao salvar linha', 'error');
-        } finally {
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.textContent = originalText;
-            }
-        }
-    }
-
-    queueOperation(type, data) {
-        this.pendingOperations.push({
-            type,
-            data,
-            timestamp: new Date()
-        });
-        this.debugLog('info', `Operação enfileirada: ${type}`, data);
-    }
-
-    async processPendingOperations() {
-        if (!this.isOnline || this.pendingOperations.length === 0) return;
-        
-        this.debugLog('info', `Processando ${this.pendingOperations.length} operações pendentes`);
-        
-        const operations = [...this.pendingOperations];
-        this.pendingOperations = [];
-        
-        for (const operation of operations) {
-            try {
-                switch (operation.type) {
-                    case 'create':
-                        await this.addLineAPI(operation.data);
-                        break;
-                    case 'update':
-                        await this.updateLineAPI(operation.data);
-                        break;
-                    case 'delete':
-                        await this.deleteLineAPI(operation.data.id);
-                        break;
-                }
-                this.debugLog('success', `Operação ${operation.type} sincronizada`);
-            } catch (error) {
-                this.debugLog('error', `Falha ao sincronizar ${operation.type}`, error.message);
-                this.pendingOperations.push(operation); // Re-queue failed operation
-            }
-        }
-        
-        this.updateSystemDisplays();
-    }
-
-    async addLineAPI(lineData) {
-        try {
-            const response = await fetch(this.config.apiBaseUrl + '/linhas', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(lineData)
-            });
-            return response.ok;
-        } catch (error) {
-            this.debugLog('warn', 'Falha na API ao adicionar linha', error.message);
-            return false;
-        }
-    }
-
-    async updateLineAPI(lineData) {
-        try {
-            const response = await fetch(this.config.apiBaseUrl + '/linhas/' + lineData.id, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(lineData)
-            });
-            return response.ok;
-        } catch (error) {
-            this.debugLog('warn', 'Falha na API ao atualizar linha', error.message);
-            return false;
-        }
-    }
-
-    editLine(id) {
-        const line = this.data.linhas.find(l => l.id === id);
-        if (line) {
-            this.openLineModal(line);
-        }
-    }
-
-    async deleteLine(id) {
-        if (!confirm('Tem certeza que deseja excluir esta linha?')) return;
-
-        try {
-            const lineIndex = this.data.linhas.findIndex(l => l.id === id);
-            if (lineIndex === -1) return;
-
-            if (this.isOnline && this.operationMode !== 'offline') {
-                await this.deleteLineAPI(id);
-            } else {
-                this.queueOperation('delete', { id });
-            }
-
-            this.data.linhas.splice(lineIndex, 1);
-            this.applyFilters();
-            this.updateDashboard();
-            this.updateSystemDisplays();
-            this.showToast('Linha excluída com sucesso!', 'success');
-            this.debugLog('success', `Linha ${id} excluída`);
-        } catch (error) {
-            this.debugLog('error', 'Erro ao excluir linha', error.message);
-            this.showToast('Erro ao excluir linha', 'error');
-        }
-    }
-
-    async deleteLineAPI(id) {
-        try {
-            const response = await fetch(this.config.apiBaseUrl + '/linhas/' + id, {
-                method: 'DELETE'
-            });
-            return response.ok;
-        } catch (error) {
-            this.debugLog('warn', 'Falha na API ao excluir linha', error.message);
-            return false;
-        }
-    }
-
-    async refreshData() {
-        this.showLoading('Atualizando dados...');
-        this.debugLog('info', 'Iniciando atualização de dados');
-        
-        try {
-            await this.checkConnection();
-            
-            if (this.isOnline) {
-                await this.processPendingOperations();
-            }
-            
-            this.applyFilters();
-            this.updateDashboard();
-            this.showToast('Dados atualizados com sucesso!', 'success');
-        } catch (error) {
-            this.debugLog('error', 'Erro ao atualizar dados', error.message);
-            this.showToast('Erro ao atualizar dados', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    updateReportPreview() {
-        const preview = document.getElementById('report-preview');
-        if (!preview) return;
-
-        const entityFilter = document.getElementById('report-entity-filter')?.value || '';
-        const statusFilter = document.getElementById('report-status-filter')?.value || '';
-        const minValue = parseFloat(document.getElementById('report-min-value')?.value) || 0;
-        const maxValue = parseFloat(document.getElementById('report-max-value')?.value) || Infinity;
-
-        const filteredData = this.data.linhas.filter(linha => {
-            const matchesEntity = !entityFilter || linha.entidade === entityFilter;
-            const matchesStatus = !statusFilter || linha.status === statusFilter;
-            const matchesValue = linha.valor >= minValue && linha.valor <= maxValue;
-            
-            return matchesEntity && matchesStatus && matchesValue;
-        });
-
-        const totalValue = filteredData.reduce((sum, linha) => sum + linha.valor, 0);
-
-        preview.innerHTML = `
-            <div style="text-align: center;">
-                <h4 style="margin-bottom: 16px; color: var(--color-text);">Prévia do Relatório</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
-                    <div>
-                        <div style="font-size: 24px; font-weight: bold; color: var(--color-primary);">${filteredData.length}</div>
-                        <div style="font-size: 12px; color: var(--color-text-secondary);">LINHAS</div>
+                <!-- System Status Panel -->
+                <div class="system-status-panel">
+                    <div class="status-item">
+                        <span class="status-label">Modo de Operação:</span>
+                        <span class="status-value" id="operation-mode-display">Online</span>
                     </div>
-                    <div>
-                        <div style="font-size: 24px; font-weight: bold; color: var(--color-success);">${this.formatCurrency(totalValue)}</div>
-                        <div style="font-size: 12px; color: var(--color-text-secondary);">VALOR TOTAL</div>
+                    <div class="status-item">
+                        <span class="status-label">Última Sincronização:</span>
+                        <span class="status-value" id="last-sync-display">Nunca</span>
                     </div>
-                    <div>
-                        <div style="font-size: 24px; font-weight: bold; color: var(--color-info);">${filteredData.filter(l => l.status === 'ativa').length}</div>
-                        <div style="font-size: 12px; color: var(--color-text-secondary);">ATIVAS</div>
+                    <div class="status-item">
+                        <span class="status-label">Total de Registros:</span>
+                        <span class="status-value">
+                            <span id="local-records">0</span> local / 
+                            <span id="remote-records">-</span> remoto
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📱</div>
+                        <div class="stat-content">
+                            <h3 id="total-lines">-</h3>
+                            <p>Total de Linhas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <h3 id="active-lines">-</h3>
+                            <p>Linhas Ativas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <h3 id="total-cost">-</h3>
+                            <p>Custo Total</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🏢</div>
+                        <div class="stat-content">
+                            <h3 id="total-entities">-</h3>
+                            <p>Entidades</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Entity Cards -->
+                <section class="section">
+                    <h2>Entidades</h2>
+                    <div class="entity-grid" id="entity-cards">
+                        <!-- Entity cards will be populated here -->
+                    </div>
+                </section>
+
+                <!-- Charts Section -->
+                <section class="section">
+                    <h2>Análises Visuais</h2>
+                    <div class="charts-grid">
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <h3>Distribuição por Entidade</h3>
+                            <canvas id="entity-chart"></canvas>
+                        </div>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <h3>Custos por Entidade</h3>
+                            <canvas id="cost-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Management Page -->
+            <div class="page hidden" id="management-page">
+                <header class="page-header">
+                    <h1>Gerenciamento de Linhas</h1>
+                    <div class="header-actions">
+                        <button class="btn btn--primary" id="add-line-btn">
+                            ➕ Adicionar Linha
+                        </button>
+                        <button class="btn btn--secondary" id="refresh-lines-btn">
+                            🔄 Atualizar
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Filters -->
+                <div class="filters-section">
+                    <div class="filters-grid">
+                        <div class="form-group">
+                            <input type="text" class="form-control" id="search-input" placeholder="Buscar por titular, número, plano...">
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="entity-filter">
+                                <option value="">Todas as Entidades</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="plan-filter">
+                                <option value="">Todos os Planos</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="status-filter">
+                                <option value="">Todos os Status</option>
+                                <option value="ativa">Ativa</option>
+                                <option value="inativa">Inativa</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filters-summary" id="filters-summary">
+                        Mostrando <span id="filtered-count">0</span> de <span id="total-count">0</span> linhas
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Titular</th>
+                                <th>Número</th>
+                                <th>Plano</th>
+                                <th>Valor</th>
+                                <th>Centro de Custo</th>
+                                <th>Entidade</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lines-table-body">
+                            <!-- Table rows will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reports Page -->
+            <div class="page hidden" id="reports-page">
+                <header class="page-header">
+                    <h1>Relatórios</h1>
+                    <p>Exportação de dados em PDF e Excel</p>
+                </header>
+
+                <div class="reports-grid">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>📄 Relatório PDF Completo</h3>
+                            <p>Relatório detalhado com gráficos, estatísticas e tabela de linhas</p>
+                            <div class="report-features">
+                                <span class="feature-badge">✓ Gráficos inclusos</span>
+                                <span class="feature-badge">✓ Estatísticas detalhadas</span>
+                                <span class="feature-badge">✓ Tabela completa</span>
+                            </div>
+                            <button class="btn btn--primary btn--full-width" id="export-pdf-btn">
+                                📄 Gerar Relatório PDF
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>📊 Exportação Excel</h3>
+                            <p>Dados estruturados para análise em planilhas</p>
+                            <div class="report-features">
+                                <span class="feature-badge">✓ Dados completos</span>
+                                <span class="feature-badge">✓ Formato CSV</span>
+                                <span class="feature-badge">✓ Filtros aplicados</span>
+                            </div>
+                            <button class="btn btn--secondary btn--full-width" id="export-excel-btn">
+                                📊 Exportar para Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Filters -->
+                <section class="section">
+                    <h2>Filtros do Relatório</h2>
+                    <div class="filters-grid">
+                        <div class="form-group">
+                            <label class="form-label">Entidade</label>
+                            <select class="form-control" id="report-entity-filter">
+                                <option value="">Todas as Entidades</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select class="form-control" id="report-status-filter">
+                                <option value="">Todos os Status</option>
+                                <option value="ativa">Ativa</option>
+                                <option value="inativa">Inativa</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Valor Mínimo</label>
+                            <input type="number" class="form-control" id="report-min-value" placeholder="0,00" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Valor Máximo</label>
+                            <input type="number" class="form-control" id="report-max-value" placeholder="1000,00" step="0.01">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Report Preview -->
+                <section class="section">
+                    <h2>Prévia dos Dados</h2>
+                    <div class="report-preview" id="report-preview">
+                        <!-- Preview will be populated here -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page hidden" id="settings-page">
+                <header class="page-header">
+                    <h1>Configurações</h1>
+                    <p>Configurações do sistema e conexão com banco de dados</p>
+                </header>
+
+                <div class="settings-grid">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>🔗 Configuração de Conexão</h3>
+                        </div>
+                        <div class="card__body">
+                            <form id="db-config-form">
+                                <div class="form-group">
+                                    <label class="form-label">Database URL Completa (PostgreSQL)</label>
+                                    <textarea class="form-control" id="database-url" rows="3" 
+                                              placeholder="postgresql://usuario:senha@host:porta/database?parametros">postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require</textarea>
+                                    <small class="form-help">Cole a URL completa de conexão com o NeonTech</small>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">API Base URL</label>
+                                    <input type="text" class="form-control" id="api-base-url" 
+                                           value="/.netlify/functions/api"
+                                           placeholder="http://localhost:8888/.netlify/functions/api">
+                                    <small class="form-help">URL base da API (adapta-se automaticamente para produção)</small>
+                                </div>
+                                <div class="connection-test-results" id="connection-test-results">
+                               
+                                    <!-- Test results will appear here -->
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn--outline" id="test-connection-btn">
+                                        🔗 Testar Conexão Completa
+                                    </button>
+                                    <button type="submit" class="btn btn--primary">
+                                        💾 Salvar Configurações
+                                    </button>
+                                    <button type="button" class="btn btn--secondary" id="reset-config-btn">
+                                        🔄 Restaurar Padrão
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>🔧 Configurações Avançadas</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="form-group">
+                                <label class="form-label">Modo de Operação</label>
+                                <select class="form-control" id="operation-mode">
+                                    <option value="online">Online (com banco de dados)</option>
+                                    <option value="offline">Offline (dados locais)</option>
+                                    <option value="fallback">Fallback automático</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tentativas de Reconexão</label>
+                                <input type="number" class="form-control" id="retry-attempts" value="3" min="1" max="10">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Intervalo de Retry (segundos)</label>
+                                <input type="number" class="form-control" id="retry-delay" value="2" min="1" max="30">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Auto-refresh (segundos)</label>
+                                <input type="number" class="form-control" id="auto-refresh" value="30" min="10" max="300">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <input type="checkbox" id="enable-debug" checked> 
+                                    Habilitar modo debug (logs detalhados)
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <input type="checkbox" id="show-notifications" checked> 
+                                    Mostrar notificações
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>📊 Status do Sistema</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="system-info">
+                                <div class="info-item">
+                                    <span class="info-label">Versão:</span>
+                                    <span class="info-value">1.0.0-corrigida</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Status da Conexão:</span>
+                                    <span class="info-value status-indicator-text" id="detailed-connection-status">Verificando...</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Última Sincronização:</span>
+                                    <span class="info-value" id="last-sync">-</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Registros Locais:</span>
+                                    <span class="info-value" id="local-record-count">-</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Última Tentativa de API:</span>
+                                    <span class="info-value" id="last-api-attempt">Nunca</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Operações Pendentes:</span>
+                                    <span class="info-value" id="pending-operations">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Debug Console -->
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>🐛 Console de Debug</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="debug-console" id="debug-console">
+                                <div class="debug-log">Aguardando logs...</div>
+                            </div>
+                            <div class="debug-actions">
+                                <button class="btn btn--sm btn--outline" id="clear-debug">
+                                    🗑️ Limpar Console
+                                </button>
+                                <button class="btn btn--sm btn--secondary" id="download-logs">
+                                    📥 Baixar Logs
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        `;
-    }
+        </main>
+    </div>
 
-    exportPDF() {
-        this.showLoading('Gerando relatório PDF...');
-        
-        setTimeout(() => {
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-
-                doc.setFontSize(20);
-                doc.text('Relatório de Linhas Telefônicas', 20, 30);
-                
-                doc.setFontSize(12);
-                doc.text('TeleCorp - Sistema de Gerenciamento', 20, 40);
-                doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 50);
-
-                const stats = this.calculateStatistics();
-                doc.text(`Total de Linhas: ${stats.totalLinhas}`, 20, 70);
-                doc.text(`Linhas Ativas: ${stats.linhasAtivas}`, 20, 80);
-                doc.text(`Custo Total: ${this.formatCurrency(stats.custoTotal)}`, 20, 90);
-
-                const reportData = this.getReportData();
-                
-                const tableData = reportData.map(linha => [
-                    linha.titular,
-                    linha.numerocelular,
-                    linha.plano,
-                    this.formatCurrency(linha.valor),
-                    linha.entidade,
-                    linha.status
-                ]);
-
-                doc.autoTable({
-                    startY: 110,
-                    head: [['Titular', 'Número', 'Plano', 'Valor', 'Entidade', 'Status']],
-                    body: tableData,
-                    theme: 'striped',
-                    headStyles: { fillColor: [31, 184, 205] },
-                    styles: { fontSize: 8 },
-                    margin: { left: 20, right: 20 }
-                });
-
-                doc.save('relatorio-linhas-telefonicas.pdf');
-                this.showToast('PDF exportado com sucesso!', 'success');
-                this.debugLog('success', 'Relatório PDF gerado');
-            } catch (error) {
-                this.debugLog('error', 'Erro ao exportar PDF', error.message);
-                this.showToast('Erro ao exportar PDF', 'error');
-            } finally {
-                this.hideLoading();
-            }
-        }, 1000);
-    }
-
-    exportExcel() {
-        try {
-            const headers = ['Titular', 'Número', 'Plano', 'Valor', 'Responsável', 'Código Responsável', 'Conta Contábil', 'Centro Custo', 'Entidade', 'Status'];
-            
-            let csv = headers.join(',') + '\n';
-            
-            const reportData = this.getReportData();
-            reportData.forEach(linha => {
-                const row = [
-                    `"${linha.titular}"`,
-                    `"${linha.numerocelular}"`,
-                    `"${linha.plano}"`,
-                    linha.valor.toString().replace('.', ','),
-                    `"${linha.responsavel}"`,
-                    `"${linha.codigoresponsavel}"`,
-                    `"${linha.contacontabil}"`,
-                    `"${linha.centrocusto}"`,
-                    `"${linha.entidade}"`,
-                    `"${linha.status}"`
-                ];
-                csv += row.join(',') + '\n';
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'linhas-telefonicas.csv');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            this.showToast('Excel exportado com sucesso!', 'success');
-            this.debugLog('success', 'Relatório Excel gerado');
-        } catch (error) {
-            this.debugLog('error', 'Erro ao exportar Excel', error.message);
-            this.showToast('Erro ao exportar Excel', 'error');
-        }
-    }
-
-    getReportData() {
-        const entityFilter = document.getElementById('report-entity-filter')?.value || '';
-        const statusFilter = document.getElementById('report-status-filter')?.value || '';
-        const minValue = parseFloat(document.getElementById('report-min-value')?.value) || 0;
-        const maxValue = parseFloat(document.getElementById('report-max-value')?.value) || Infinity;
-
-        return this.data.linhas.filter(linha => {
-            const matchesEntity = !entityFilter || linha.entidade === entityFilter;
-            const matchesStatus = !statusFilter || linha.status === statusFilter;
-            const matchesValue = linha.valor >= minValue && linha.valor <= maxValue;
-            
-            return matchesEntity && matchesStatus && matchesValue;
-        });
-    }
-
-    saveConfig(e) {
-        e.preventDefault();
-        
-        const databaseUrl = document.getElementById('database-url')?.value || '';
-        const apiBaseUrl = document.getElementById('api-base-url')?.value || '';
-        
-        this.config.databaseUrl = databaseUrl;
-        this.config.apiBaseUrl = apiBaseUrl;
-        
-        this.showToast('Configurações salvas com sucesso!', 'success');
-        this.debugLog('success', 'Configurações salvas', this.config);
-        
-        this.checkConnection();
-    }
-
-    resetConfig() {
-        document.getElementById('database-url').value = "postgresql://neondb_owner:npg_rLH8DGJBsfk2@ep-holy-firefly-acnw4zp1-pooler.sa-east-1.aws.neon.tech/linhas_db?sslmode=require&channel_binding=require";
-        document.getElementById('api-base-url').value = this.getApiBaseUrl();
-        
-        this.showToast('Configurações restauradas!', 'info');
-        this.debugLog('info', 'Configurações restauradas para padrão');
-    }
-
-    loadSettings() {
-        const operationModeSelect = document.getElementById('operation-mode');
-        const autoRefreshInput = document.getElementById('auto-refresh');
-        const retryAttemptsInput = document.getElementById('retry-attempts');
-        const retryDelayInput = document.getElementById('retry-delay');
-        const enableDebugCheck = document.getElementById('enable-debug');
-        const showNotificationsCheck = document.getElementById('show-notifications');
-        
-        if (operationModeSelect) operationModeSelect.value = this.operationMode;
-        if (autoRefreshInput) autoRefreshInput.value = 30;
-        if (retryAttemptsInput) retryAttemptsInput.value = this.retryAttempts;
-        if (retryDelayInput) retryDelayInput.value = this.retryDelay / 1000;
-        if (enableDebugCheck) enableDebugCheck.checked = this.enableDebug;
-        if (showNotificationsCheck) showNotificationsCheck.checked = this.showNotifications;
-    }
-
-    setupAutoRefresh(intervalSeconds = 30) {
-        if (this.autoRefreshInterval) {
-            clearInterval(this.autoRefreshInterval);
-        }
-        
-        if (intervalSeconds > 0 && this.operationMode !== 'offline') {
-            this.autoRefreshInterval = setInterval(async () => {
-                this.debugLog('info', 'Auto-refresh executado');
-                await this.checkConnection();
-                if (this.isOnline) {
-                    await this.processPendingOperations();
-                }
-                this.updateSystemDisplays();
-            }, intervalSeconds * 1000);
-        }
-    }
-
-    updateSystemInfo() {
-        this.updateSystemDisplays();
-    }
-
-    downloadLogs() {
-        const logsText = this.debugLogs.map(log => 
-            `[${log.timestamp}] [${log.level.toUpperCase()}] ${log.message}${log.data ? '\n' + JSON.stringify(log.data, null, 2) : ''}`
-        ).join('\n\n');
-        
-        const blob = new Blob([logsText], { type: 'text/plain' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', `telecorp-logs-${new Date().toISOString().slice(0, 10)}.txt`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        this.showToast('Logs baixados com sucesso!', 'success');
-    }
-
-    showLoading(message = 'Carregando...') {
-        const overlay = document.getElementById('loading-overlay');
-        const text = document.getElementById('loading-text');
-        
-        if (overlay) {
-            overlay.classList.remove('hidden');
-        }
-        if (text) {
-            text.textContent = message;
-        }
-    }
-
-    hideLoading() {
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) {
-            overlay.classList.add('hidden');
-        }
-    }
-
-    showToast(message, type = 'info') {
-        if (!this.showNotifications) return;
-        
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-        
-        const toast = document.createElement('div');
-        
-        toast.className = `toast toast--${type}`;
-        
-        const icons = {
-            success: '✅',
-            error: '❌', 
-            warning: '⚠️',
-            info: 'ℹ️'
-        };
-        
-        const titles = {
-            success: 'Sucesso',
-            error: 'Erro',
-            warning: 'Aviso',
-            info: 'Informação'
-        };
-        
-        toast.innerHTML = `
-            <div style="font-weight: 500; margin-bottom: 4px;">
-                ${icons[type]} ${titles[type]}
+    <!-- Add/Edit Line Modal -->
+    <div class="modal hidden" id="line-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Adicionar Linha</h3>
+                <button class="modal-close" id="close-modal">&times;</button>
             </div>
-            <div>${message}</div>
-        `;
-        
-        container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.animation = 'slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) reverse forwards';
-            setTimeout(() => {
-                if (container.contains(toast)) {
-                    container.removeChild(toast);
-                }
-            }, 250);
-        }, 4000);
-    }
+            <div class="modal-body">
+                <form id="line-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Titular *</label>
+                            <input type="text" class="form-control" id="titular" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Número do Celular *</label>
+                            <input type="text" id="numerocelular" placeholder="(xx) xxxxx-xxxx" maxlength="15" oninput="formatPhone(this)" required >
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Valor Mensal *</label>
+                            <input type="number" step="0.01" class="form-control" id="valor" required placeholder="0,00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Plano *</label>
+                            <select class="form-control" id="plano" required>
+                                <option value="">Selecione um plano</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Responsável *</label>
+                            <input type="text" class="form-control" id="responsavel" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Código do Responsável *</label>
+                            <input type="text" class="form-control" id="codigoresponsavel" required placeholder="RES001">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Conta Contábil *</label>
+                            <input type="text" class="form-control" id="contacontabil" placeholder="1234001" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Centro de Custo *</label>
+                            <input type="text" class="form-control" id="centrocusto" placeholder="101" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Entidade *</label>
+                            <select class="form-control" id="entidade" required>
+                                <option value="">Selecione uma entidade</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Status *</label>
+                            <select class="form-control" id="status" required>
+                                <option value="ativa">Ativa</option>
+                                <option value="inativa">Inativa</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--outline" id="cancel-btn">Cancelar</button>
+                <button type="submit" form="line-form" class="btn btn--primary" id="save-btn">
+                    <span id="save-btn-text">Salvar</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
-    formatCurrency(value) {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
-    }
-} 
-  
-// Initialize the application
-let app;
-document.addEventListener('DOMContentLoaded', () => {
-    app = new TeleCorpApp();
-});
-/**
- * Formata o valor do input para (XX) XXXXX-XXXX
- * @param {HTMLInputElement} input 
- */
-function formatPhone(input) {
-  // Remove tudo que não for dígito
-  let digits = input.value.replace(/\D/g, '');
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
 
-  // Aplica máscara
-  if (digits.length > 2) {
-    // Coloca o DDD
-    digits = '(' + digits.slice(0, 2) + ') ' + digits.slice(2);
-  }
-  if (digits.length > 9) {
-    // Adiciona hífen após os 5 primeiros dígitos do número
-    digits = digits.slice(0, 9) + '-' + digits.slice(9, 13);
-  }
+    <!-- Loading Overlay -->
+   <!--  <div id="loading-overlay" class="loading-overlay"> -->
+  <!--  <div class="loading-spinner"></div> -->
+  <!--  <div class="loading-text">Carregando…</div> -->
+ <!-- </div> -->
 
-  // Limita tamanho máximo de 15 caracteres: (XX) XXXXX-XXXX
-  input.value = digits.slice(0, 15);
-}
-
-// Handle window resize for charts
-window.addEventListener('resize', () => {
-    if (app && app.charts) {
-        Object.values(app.charts).forEach(chart => {
-            if (chart) chart.resize();
-        });
-    }
-});
-
+    <script src="app.js"></script>
+</body>
+</html>
