@@ -667,68 +667,119 @@ class TeleCorpApp {
         });
 
         // Entity distribution chart
-        const entityCtx = document.getElementById('entity-chart');
-        if (entityCtx) {
-            this.charts.entity = new Chart(entityCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: this.data.entidades.map(e => e.nome),
-                    datasets: [{
-                        data: this.data.entidades.map(e => e.totalLinhas),
-                        backgroundColor: ['#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5'],
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-        }
+        const distCtx = document.getElementById('entity-chart');
+            if (distCtx) {
+                // Dados de distribuição
+                const labels = this.data.entidades.map(e => e.nome);
+                const values = this.data.entidades.map(e => e.totalLinhas);
+                const colors = this.data.entidades.map(e => `#${e.cor}`); // usa cor da entidade
 
-        // Cost distribution chart
-        const costCtx = document.getElementById('cost-chart');
-        if (costCtx) {
-            this.charts.cost = new Chart(costCtx, {
-                type: 'bar',
-                data: {
-                    labels: this.data.entidades.map(e => e.nome),
-                    datasets: [{
-                        label: 'Custo Mensal',
-                        data: this.data.entidades.map(e => e.custoMensal),
-                        backgroundColor: ['#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5'],
-                        borderRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
+                this.charts.distribution = new Chart(distCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: colors,
+                            hoverOffset: 30,
+                            cutout: '60%',        // tamanho do “buraco” interno
+                            borderWidth: 2,
+                            borderColor: '#1F2937'
+                        }]
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return 'R$ ' + value.toLocaleString('pt-BR', {
-                                        minimumFractionDigits: 2
-                                    });
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => {
+                                        const count = ctx.parsed;
+                                        return `${ctx.label}: ${count} linha${count>1?'s':''}`;
+                                    }
+                                },
+                                backgroundColor: '#111827',
+                                titleColor: '#F9FAFB',
+                                bodyColor: '#F9FAFB',
+                                borderColor: '#374151',
+                                borderWidth: 1
+                            },
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    color: '#F9FAFB',
+                                    boxWidth: 14,
+                                    padding: 12
                                 }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Distribuição de Linhas por Entidade',
+                                color: '#F9FAFB',
+                                font: { size: 18, weight: '500' },
+                                padding: { bottom: 16 }
                             }
                         }
                     }
-                }
-            });
-        }
+                });
+            }
+
+        // Cost distribution chart
+        const costCtx = document.getElementById('cost-chart');
+            if (costCtx) {
+                // Dados
+                const labels = this.data.entidades.map(e => e.nome);
+                const data = this.data.entidades.map(e => e.custoMensal);
+                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+
+                this.charts.cost = new Chart(costCtx, {
+                    type: 'pie',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data,
+                            backgroundColor: colors,
+                            hoverOffset: 20,       // "explode" slice on hover
+                            borderWidth: 2,
+                            borderColor: '#1F2937'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => {
+                                        const valor = ctx.parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                        return `${ctx.label}: ${valor}`;
+                                    }
+                                },
+                                backgroundColor: '#111827',
+                                titleColor: '#F9FAFB',
+                                bodyColor: '#F9FAFB',
+                                borderColor: '#374151',
+                                borderWidth: 1
+                            },
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#F9FAFB',
+                                    boxWidth: 12,
+                                    padding: 16
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Distribuição de Custos por Entidade',
+                                color: '#F9FAFB',
+                                font: { size: 18, weight: '500' },
+                                padding: { bottom: 16 }
+                            }
+                        }
+                    }
+                });
+            }
     }
 
     renderLineTable() {
